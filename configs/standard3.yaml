@@ -1,0 +1,174 @@
+# 敌方目标颜色设置，当前启用红色目标，蓝色目标被注释禁用
+#enemy_color: "red" #敌方目标颜色
+enemy_color: "blue"
+
+#####-----神经网络参数-----#####
+# 使用的YOLO模型版本
+yolo_name: yolov5
+# 分类模型路径
+classify_model: /home/pldx/Desktop/sp_vision_25-main/assets/tiny_resnet.onnx
+# 各版本YOLO模型路径
+yolo11_model_path: /home/pldx/Desktop/sp_vision_25-main/assets/yolo11.xml
+yolov8_model_path: /home/pldx/Desktop/sp_vision_25-main/assets/yolov8.xml
+yolov5_model_path: /home/pldx/Desktop/sp_vision_25-main/assets/yolov5.xml
+yolov5_int8_model_path: /home/pldx/Desktop/sp_vision_25-main/assets/yolov5_int8.xml
+# 运行设备（GPU/CPU）
+device: CPU
+# 最小置信度阈值，低于此值的检测结果会被过滤
+min_confidence: 0.8
+# 是否使用传统检测方法
+use_traditional: true
+
+#####-----ROI（感兴趣区域）-----#####45, 52   28
+# ROI区域坐标及尺寸（x、y为左上角坐标）
+roi: 
+  x: 420
+  y: 50
+  width: 600
+  height: 600
+# 是否启用ROI区域检测
+use_roi: false
+
+#####-----传统方法参数-----#####
+# 阈值参数（用于图像处理）
+threshold: 150
+# 最大角度误差（度）
+max_angle_error: 45 # degree
+# 灯条比例范围（最小/最大）
+min_lightbar_ratio: 1.5
+max_lightbar_ratio: 20
+# 最小灯条长度
+min_lightbar_length: 8
+# 装甲板比例范围（最小/最大）
+min_armor_ratio: 1
+max_armor_ratio: 5
+# 最大侧边比例
+max_side_ratio: 1.5
+# 最大矩形误差（度）
+max_rectangular_error: 25 # degree
+
+#####-----跟踪器参数-----#####
+# 最小检测次数（达到此次数才认为稳定跟踪）
+min_detect_count: 5
+# 最大临时丢失计数（超过此计数则认为目标丢失）
+max_temp_lost_count: 15
+# 前哨目标的最大临时丢失计数
+outpost_max_temp_lost_count: 75
+
+#####-----瞄准器参数-----#####
+# 偏航角补偿（度）
+yaw_offset: 0.5 # degree -2.5 (减小往右偏)
+# 俯仰角补偿（度）
+pitch_offset: 7.0 # degree 2  （加大往上偏）
+# 进入角度（度）
+comming_angle: 60 # degree
+# 离开角度（度）
+leaving_angle: 20 # degree
+# 决策速度（弧度/秒）
+decision_speed: 8 # rad/s
+# 高速延迟时间（秒）
+high_speed_delay_time: 0.2 # s
+# 低速延迟时间（秒），规划器使用此值
+low_speed_delay_time: 0.12 # s planner use this value
+
+#####-----射击器参数-----#####
+# 近距离射击容差（度）
+first_tolerance: 3 # 近距离射击容差，degree
+# 远距离射击容差（度）
+second_tolerance: 2 # 远距离射击容差，degree
+# 距离判断阈值
+judge_distance: 2 #距离判断阈值
+# 是否由自瞄系统控制射击
+auto_fire: true # 是否由自瞄控制射击
+
+# 相机名称
+gamma: 0.5
+camera_name: "hikrobot"
+# 曝光时间（毫秒）
+exposure_ms: 4
+# 增益值
+gain: 16.9
+# 相机的VID（厂商ID）和PID（产品ID）
+vid_pid: "2bdf:0001"  #VID（厂商 ID）和PID（产品 ID）
+
+# 云台到IMU本体的旋转矩阵
+#  1  0  0
+#  0  1  0
+#  0  0  1
+R_gimbal2imubody: [1, 0, 0, 0, 1, 0, 0, 0, 1]
+
+
+# X轴：前后距离（向前53.866mm → 0.053866m）
+# Y轴：左右距离（机械未标注，默认无偏移）
+# Z轴：上下距离（向上32.739305mm → 0.032739305m）
+#云台到IMU本体的平移向量（单位：m，已将mm转为m）T_gimbal2imubody: [33.866, 0.0, 82.739305]
+T_gimbal2imubody: [0.0466, 0.0, 0.0339305]
+
+# 重投影误差: 0.6484px
+#camera_matrix: [2042.419469033613, 0, 699.97502715925907, 0, 2042.9697807341181, 508.56352056068022, 0, 0, 1]
+#distort_coeffs: [-0.040923924658237923, 0.15036765495109844, 0.00055987106583906085, -0.0018032948552191938, 0]
+
+# 重投影误差: 0.1123px
+camera_matrix: [2412.9881073840234, 0, 702.97895333701535, 0, 2412.0285915939103, 571.54654144588142, 0, 0, 1]
+distort_coeffs: [-0.030310388242383027, 0.19362251153654042, 0.0013931944784624261, -0.0013660006894308805, 0]
+
+
+# 重投影误差: 0.1167px
+# camera_matrix: [2420.9112373818243, 0, 713.47158669528005, 0, 2420.4977302172547, 563.48338987330817, 0, 0, 1]
+# distort_coeffs: [-0.034891364831791644, 0.17109144951744723, 0.00051549167101920209, -0.00015721436272554863, 0]
+
+# 相机同理想情况的偏角: yaw1.44 pitch-7.28 roll0.96 degree
+# 标定板到世界坐标系原点的水平距离: 1.13 m
+# 标定板同竖直摆放时的偏角: yaw7.61 pitch13.92 roll-0.46 degree
+# 相机到云台的旋转矩阵R_camera2gimbal: [-0.027182119030230909, -0.12616154330853446, 0.99163723074269183, -0.9949106557517331, 0.019998323121329122, -0.024853106601381177, -0.016695575474690555, -0.99180811252093692, -0.12664093215554434]
+R_camera2gimbal: [-0.027182119030230909, -0.12616154330853446, 0.99163723074269183, -0.9949106557517331, 0.019998323121329122, -0.024853106601381177, -0.016695575474690555, -0.99180811252093692, -0.12664093215554434]
+#相机到云台的平移向量
+t_camera2gimbal: [0.0560669975045827, 0.0, 0.0]
+
+
+#####-----控制板参数-----#####
+# 四元数CAN ID
+quaternion_canid: 0x100
+# 子弹速度CAN ID
+bullet_speed_canid: 0x101
+# 发送CAN ID
+send_canid: 0xff
+# CAN接口名称
+can_interface: "can0"
+
+#####-----云台参数-----#####
+# 云台通信端口
+com_port: "/dev/gimbal"
+# 云台PID控制参数
+yaw_kp: 0
+yaw_kd: 0
+pitch_kp: 0
+pitch_kd: 0
+
+#####-----规划器参数-----#####
+# 开火阈值
+fire_thresh: 0.003
+
+# 最大偏航角加速度
+max_yaw_acc: 50
+# 偏航角卡尔曼滤波Q矩阵
+Q_yaw: [9e6, 0]
+# 偏航角卡尔曼滤波R矩阵
+R_yaw: [1]
+
+# 最大俯仰角加速度
+max_pitch_acc: 100
+# 俯仰角卡尔曼滤波Q矩阵
+Q_pitch: [9e6, 0]
+# 俯仰角卡尔曼滤波R矩阵
+R_pitch: [1]
+
+#####-----能量机关检测器参数-----#####
+# 能量机关检测模型路径
+model: "assets/yolo11_buff_int8.xml"
+
+#####-----能量机关瞄准器参数-----#####
+# 射击间隔时间（秒）
+fire_gap_time: 0.700   # s
+# 预测时间（秒）
+predict_time: 0.120     # s
