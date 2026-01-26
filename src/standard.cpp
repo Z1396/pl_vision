@@ -32,7 +32,7 @@ using namespace std::chrono;
 // 格式：{参数名 | 默认值 | 说明}，@表示位置参数（无需参数名，直接传值）
 const std::string keys =
   "{help h usage ? |      | 输出命令行参数说明}"  // -help/-h：显示帮助信息
-  "{@config-path   | /home/pldx/Desktop/sp_vision_25-main/configs/standard3.yaml | 位置参数，yaml配置文件路径 }";  // 第一个位置参数：配置文件路径
+  "{@config-path   | configs/standard3.yaml | 位置参数，yaml配置文件路径 }";  // 第一个位置参数：配置文件路径
 
 // 主函数：程序入口
 int main(int argc, char * argv[])
