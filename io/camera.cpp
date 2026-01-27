@@ -39,6 +39,13 @@ Camera::Camera(const std::string & config_path)
   }
 
   else {
+    /*四、为什么用 <stdexcept> 而不是自定义错误码？
+    自瞄项目中，新手常常用「返回错误码」处理错误（比如 int init_camera() { return -1; }），但对比 <stdexcept> 的异常处理，劣势明显：
+    对比维度	std::runtime_error（异常）	                            自定义错误码（int）
+    语义清晰	异常类型直接表示错误类型（运行时错误），错误信息可包含具体内容	  错误码只是数字（-1/-2），需查文档才知道含义
+    中断可控	异常会自动中断当前函数，向上传递，无需手动层层返回错误码	      需手动检查每个函数的返回值，代码冗余（比如 if (init() < 0) return -1;）
+    调试便捷	异常栈能定位到具体出错行（比如哪个相机名称未知）	             错误码只能知道「出错了」，无法定位具体位置
+    资源安全	异常抛出时，栈上对象会自动析构（比如 unique_ptr 释放内存）	  错误码返回时，若忘记释放资源（比如相机句柄），会导致泄漏*/
     throw std::runtime_error("Unknow camera_name: " + camera_name + "!");
   }
 }

@@ -10,13 +10,24 @@
 
 namespace tools
 {
+/*1. 全局日志器指针：std::shared_ptr<spdlog::logger> logger_ = nullptr;
+
+  作用：全局保存日志器实例，保证整个程序只有一个日志器（单例模式）；
+  为什么用 shared_ptr：spdlog 的 logger 本身支持多线程共享，shared_ptr 能安全管理其生命周期，避免重复初始化 / 释放；
+  初始化为 nullptr：配合 logger() 函数的懒加载逻辑，首次调用时才初始化。*/
 std::shared_ptr<spdlog::logger> logger_ = nullptr;
 
 // 初始化日志系统的配置函数
 void set_logger()
 {
-  // 1. 生成日志文件名：以当前系统时间为名称，格式为 "年-月-日_时-分-秒.log"
-  //    日志文件将存储在 "logs/" 目录下（需确保该目录已存在，否则可能创建失败）
+  /*2. 日志文件名生成：fmt::format("logs/{:%Y-%m-%d_%H-%M-%S}.log", std::chrono::system_clock::now())
+
+    核心依赖：<fmt/chrono.h> 让 fmt 库能直接格式化 std::chrono::system_clock::now()（系统时间戳）；
+    格式说明：
+        %Y-%m-%d：年 - 月 - 日（如 2026-01-28）；
+        %H-%M-%S：时 - 分 - 秒（如 17-30-00）；
+        最终文件名示例：logs/2026-01-28_17-30-00.log；
+    关键隐患：如果 logs/ 目录不存在，文件 sink 创建会失败（程序不会崩溃，但日志无法写入文件）。*/
   auto file_name = fmt::format("logs/{:%Y-%m-%d_%H-%M-%S}.log", std::chrono::system_clock::now());
 
   // 2. 创建文件输出器（sink）：用于将日志写入文件

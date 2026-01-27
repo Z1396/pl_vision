@@ -60,6 +60,15 @@ private:
     核心选择：用 std::unique_ptr 而非 std::shared_ptr，因为一个 Camera 对象应该独占一个相机实例（相机是独占资源，不能被多个对象同时管理）；
     多态支持：unique_ptr 支持多态（指向基类，实际存储子类对象），这是你能动态切换海康 / 大华相机的关键；
     内存安全：unique_ptr 会在 Camera 对象销毁时自动释放相机实例，无需手动 delete，避免内存泄漏。*/
+
+  /*1. 为什么用 unique_ptr 而不是 shared_ptr？
+
+    相机是「独占资源」：一个 Camera 对象应该唯一管理一个相机实例，unique_ptr 的「独占性」刚好匹配；
+    shared_ptr 是「共享所有权」：如果用 shared_ptr，可能出现多个 Camera 对象共享同一个相机，导致重复释放 / 操作冲突；
+    性能优势：unique_ptr 无引用计数开销，比 shared_ptr 更高效（自瞄项目对实时性要求高）。
+
+    2. 如何正确赋值（std::make_unique 的重要性）
+    你在 camera.cpp 中用 std::make_unique<HikRobot>(...) 赋值给 camera_，这是最优写法：*/
   std::unique_ptr<CameraBase> camera_; // 智能指针：管理具体的相机实例
 
 };
