@@ -1,7 +1,6 @@
 .vscode/
 .github/
 build/
-io/
 logs/
 assets/img_with_q/
 records/
