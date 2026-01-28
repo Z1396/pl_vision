@@ -1,5 +1,12 @@
 #include "camera.hpp"
 
+/*<stdexcept> 封装了 C++ 标准库预定义的逻辑错误 / 运行时错误异常类，引入它之后，你可以：
+
+    ✅ 直接抛出标准异常（比如 throw std::runtime_error("配置加载失败")）；
+    ✅ 继承标准异常类自定义业务异常（比如 struct YamlLoadError : public std::runtime_error）；
+    ✅ 捕获标准异常（比如 catch (const std::runtime_error& e)）；
+
+简单说：这个头文件是 C++ 中 “标准化处理异常” 的基础，让你不用从零定义异常类，直接复用标准库的成熟设计。*/
 #include <stdexcept>
 
 #include "hikrobot/hikrobot.hpp"
