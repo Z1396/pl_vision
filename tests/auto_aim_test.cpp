@@ -20,7 +20,7 @@ const std::string keys =
   "{config-path c  | configs/standard3.yaml | yaml配置文件的路径}"
   "{start-index s  | 0                | 视频起始帧下标    }"
   "{end-index e    | 280               | 视频结束帧下标    }"
-  "{@input-path    | assets/demo/qianshao | avi和txt文件的路径}";
+  "{@input-path    | assets/demo/3m | avi和txt文件的路径}";
 
 int main(int argc, char * argv[])
 {
@@ -162,7 +162,7 @@ int main(int argc, char * argv[])
     //   {10, 120}, {0, 255, 255}  // 位置：(10,120)，颜色：黄色
     // );
 
-     tools::draw_text(img, fmt::format("[{}]", tracker.state()), {160, 300}, {255, 255, 255});
+    tools::draw_text(img, fmt::format("[FPS:{:.3}]",fps ), {100, 150}, {255, 255, 255});
 
      nlohmann::json data;  // 用于记录当前帧的算法数据
 

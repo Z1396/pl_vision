@@ -103,7 +103,7 @@ int main(int argc, char * argv[])
     }
     avg_interval /= frame_intervals.size();
     if (avg_interval > 1e-6) {  // 防止除以0（极端情况下帧间隔为0）
-      fps = 1.0 / avg_interval;
+      fps = 1.0 / avg_interval; 
     } else {
       fps = 0.0;
     }

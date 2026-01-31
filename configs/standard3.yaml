@@ -1,6 +1,6 @@
 # 敌方目标颜色设置，当前启用红色目标，蓝色目标被注释禁用
-#enemy_color: "red" #敌方目标颜色
-enemy_color: "blue"
+enemy_color: "red" #敌方目标颜色
+#enemy_color: "blue" #敌方目标颜色
 
 #####-----神经网络参数-----#####
 # 使用的YOLO模型版本
