@@ -1,6 +1,8 @@
 #ifndef TOOLS__MATH_TOOLS_HPP
 #define TOOLS__MATH_TOOLS_HPP
 
+/*#include <Eigen/Geometry> 是Eigen 线性代数库中专门用于几何变换、空间姿态表示的核心头文件，提供了三维空间中工程开发（如机器人、计算机视觉、图形学、无人机控制等）
+最常用的几何操作类与方法，是处理旋转、平移、刚体变换的标准工具，无需依赖其他 Eigen 模块（可独立引入核心几何功能）。*/
 #include <Eigen/Geometry>
 #include <chrono>
 
