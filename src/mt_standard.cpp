@@ -79,7 +79,7 @@ int main(int argc, char * argv[])
   io::CBoard cboard(config_path);  // 串口板模块：负责IMU数据读取、云台/发射机构指令发送、系统模式获取
 
   // 4. 初始化自动瞄准（自瞄）业务模块（配置文件加载自瞄参数：检测阈值、跟踪参数、瞄准参数等）
-  auto_aim::multithread::MultiThreadDetector detector(config_path);  // 多线程检测器：独立线程执行装甲板检测
+  auto_aim::multithread::MultiThreadDetector detector(config_path, true);  // 多线程检测器：独立线程执行装甲板检测
   auto_aim::Solver solver(config_path);                              // 自瞄解算器：PnP解算+多坐标系转换
   auto_aim::Tracker tracker(config_path, solver);                    // 目标跟踪器：基于解算结果实现装甲板连续跟踪
   auto_aim::Aimer aimer(config_path);                                // 自瞄瞄准器：计算云台需要转动的角度、提前量
@@ -135,6 +135,8 @@ int main(int argc, char * argv[])
     }
 
     /// -------------------------- 自动瞄准模式（auto_aim）处理逻辑 --------------------------
+    /*以原子操作的方式，安全读取原子变量 mode 的当前值，替代「普通变量 + 互斥锁」的读取方式，实现无锁的多线程安全访问，
+    解决多线程中「读 - 写普通变量」的 ** 数据竞争（data race）** 问题。*/
     if (mode.load() == io::Mode::auto_aim) 
     {
       // 1. 从多线程检测器获取检测结果：调试版弹出（含原始图像+检测到的装甲板+采集时间戳t）

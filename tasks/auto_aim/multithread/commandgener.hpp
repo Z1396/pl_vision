@@ -1,6 +1,8 @@
 #ifndef AUTO_AIM_MULTITHREAD__HPP
 #define AUTO_AIM_MULTITHREAD__HPP
 
+/*std::optional是 C++17 中极具实用性的特性，核心价值在于类型安全地表示可选值，
+替代传统的魔术值、空指针、布尔标记等方案，让代码更优雅、更安全、更易维护。*/
 #include <optional>  // 用于表示可能为空的值（可选值）
 
 // 硬件控制板接口头文件
