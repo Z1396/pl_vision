@@ -97,7 +97,8 @@ void CBoard::send(Command command) const
   try 
   {
     can_.write(&frame);
-  } catch (const std::exception & e) {
+  } catch (const std::exception & e) 
+  {
     tools::logger()->warn("{}", e.what());
   }
 }
@@ -180,7 +181,8 @@ std::string CBoard::read_yaml(const std::string & config_path)
   bullet_speed_canid_ = tools::read<int>(yaml, "bullet_speed_canid");
   send_canid_ = tools::read<int>(yaml, "send_canid");
 
-  if (!yaml["can_interface"]) {
+  if (!yaml["can_interface"]) 
+  {
     throw std::runtime_error("Missing 'can_interface' in YAML configuration.");
   }
 
