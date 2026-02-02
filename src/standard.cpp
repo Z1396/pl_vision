@@ -98,7 +98,8 @@ int main(int argc, char * argv[])
     }
     // 计算平均帧间隔，再求倒数得到平滑后的FPS
     double avg_interval = 0.0;
-    for (double interval : frame_intervals) {
+    for (double interval : frame_intervals) 
+    {
       avg_interval += interval;
     }
     avg_interval /= frame_intervals.size();

@@ -1,27 +1,27 @@
-#include <chrono>       // 用于时间相关操作（如时间点、时间间隔）
-#include <opencv2/opencv.hpp>  // OpenCV库，用于图像处理和显示
-#include <thread>       // 用于多线程编程
+// 时间相关头文件：用于时间戳记录、延时、时间点计算（std::chrono）
+#include <chrono>
+// OpenCV核心头文件：图像存储、处理、命令行解析
+#include <opencv2/opencv.hpp>
+// 线程相关头文件：创建多线程、线程管理（std::thread、std::atomic）
+#include <thread>
 
-// 自定义IO模块头文件：相机、IMU、控制板等硬件接口
+// 硬件IO模块：相机采集、串口通信、IMU数据读取
 #include "io/camera.hpp"
 #include "io/dm_imu/dm_imu.hpp"
-
-// 自瞄任务相关头文件：检测器、解算器、追踪器等算法模块
+// 自动瞄准任务模块：检测、解算、跟踪、瞄准、射击、多线程检测器/指令生成
 #include "tasks/auto_aim/aimer.hpp"
 #include "tasks/auto_aim/multithread/commandgener.hpp"
 #include "tasks/auto_aim/multithread/mt_detector.hpp"
 #include "tasks/auto_aim/shooter.hpp"
 #include "tasks/auto_aim/solver.hpp"
 #include "tasks/auto_aim/tracker.hpp"
-
-// 打符任务相关头文件：打符专用的检测器、解算器等
+// 自动打符任务模块：检测、解算、目标管理、瞄准、类型定义
 #include "tasks/auto_buff/buff_aimer.hpp"
 #include "tasks/auto_buff/buff_detector.hpp"
 #include "tasks/auto_buff/buff_solver.hpp"
 #include "tasks/auto_buff/buff_target.hpp"
 #include "tasks/auto_buff/buff_type.hpp"
-
-// 工具类头文件：退出控制、图像工具、日志、数学工具等
+// 通用工具模块：程序退出管理、图像绘制、日志打印、数学工具、数据绘图、数据记录
 #include "tools/exiter.hpp"
 #include "tools/img_tools.hpp"
 #include "tools/logger.hpp"
@@ -29,256 +29,193 @@
 #include "tools/plotter.hpp"
 #include "tools/recorder.hpp"
 
-// 命令行参数定义：指定配置文件路径和帮助信息
+// OpenCV命令行参数解析器 键值定义
+// 格式：{参数名 | 默认值 | 参数说明}，@表示位置参数（无需指定参数名，按顺序传递）
 const std::string keys =
-  "{help h usage ? | | 输出命令行参数说明}"
-  "{@config-path   | /home/pldx/Desktop/sp_vision_25-main/configs/standard3.yaml | yaml配置文件路径 }";
+  "{help h usage ? | | 输出命令行参数说明}"          // 帮助参数：-h/--help/--usage
+  "{@config-path   | | yaml配置文件路径 }";          // 位置参数：第一个参数为配置文件路径
 
-// 简化chrono库的命名空间使用（如1ms代表1毫秒）
+// 引入C++14时间字面量（如1ms、500us），简化时间延时/偏移计算
 using namespace std::chrono_literals;
 
+/**
+ * @brief 自动瞄准系统主程序入口
+ * @param argc 命令行参数个数
+ * @param argv 命令行参数数组
+ * @return int 程序退出码（0为正常退出，非0为异常）
+ * @details 系统核心总控流程：
+ *          1. 命令行参数解析，获取YAML配置文件路径；
+ *          2. 初始化全局工具模块、硬件IO模块、自瞄/打符业务模块；
+ *          3. 创建**装甲板检测独立线程**，实现图像采集与检测的并行化，提升实时性；
+ *          4. 主循环（非阻塞）：监听系统工作模式，根据模式切换执行自瞄/打符/空闲逻辑；
+ *          5. 模式切换时打印日志，保证运行状态可追溯；
+ *          6. 自瞄模式：多线程检测→IMU姿态同步→坐标解算→目标跟踪→指令生成；
+ *          7. 打符模式：图像采集→IMU姿态同步→符文检测→坐标解算→目标锁定→瞄准指令发送；
+ *          8. 程序退出时等待检测线程结束，保证资源正常释放；
+ * @note 核心设计：**检测线程与主循环解耦**，采用生产者-消费者模型，避免检测耗时阻塞主逻辑；
+ * @note 时间同步：所有模块基于**同一时间戳t**工作，保证图像、IMU、目标数据的时间一致性；
+ * @note 模式管理：通过std::atomic原子变量管理系统模式，保证多线程下模式切换的线程安全。
+ */
 int main(int argc, char * argv[])
 {
-  // 解析命令行参数
+  // 1. 初始化OpenCV命令行参数解析器，解析传入的参数
   cv::CommandLineParser cli(argc, argv, keys);
-  auto config_path = cli.get<std::string>("@config-path");  // 获取配置文件路径
-  if (cli.has("help") || !cli.has("@config-path")) {  // 若请求帮助或未指定配置文件
-    cli.printMessage();  // 打印参数说明
+  // 获取位置参数：配置文件路径（第一个命令行参数）
+  auto config_path = cli.get<std::string>("@config-path");
+  // 若传入帮助参数，或未传入配置文件路径，打印参数说明并退出程序
+  if (cli.has("help") || !cli.has("@config-path")) 
+  {
+    cli.printMessage();
     return 0;
   }
 
-  // 初始化工具类
-  tools::Exiter exiter;        // 程序退出控制器（处理退出信号）
-  tools::Plotter plotter;      // 数据绘图工具（用于调试数据可视化）
-  tools::Recorder recorder;    // 数据录制器（用于保存图像、传感器数据等）
+  // 2. 初始化通用工具模块（全局生效，所有业务模块可调用）
+  tools::Exiter exiter;       // 程序退出管理器：统一管理退出标志，支持外部触发退出
+  tools::Plotter plotter;     // 数据绘图工具：实时绘制目标轨迹、角度、距离等数据，便于调试
+  tools::Recorder recorder;   // 数据记录工具：记录图像、IMU姿态、时间戳，支持离线复现与调试
 
-  // 初始化硬件接口
-  io::Camera camera(config_path);       // 相机接口（读取图像）
-  io::CBoard cboard(config_path);       // 控制板接口（与下位机通信，获取IMU、发送指令）
+  // 3. 初始化硬件IO模块（与硬件交互，配置文件加载硬件参数：端口、分辨率、波特率等）
+  io::Camera camera(config_path);  // 相机模块：负责图像采集，返回图像+采集时间戳
+  io::CBoard cboard(config_path);  // 串口板模块：负责IMU数据读取、云台/发射机构指令发送、系统模式获取
 
-  // 初始化自瞄算法模块
-  auto_aim::multithread::MultiThreadDetector detector(config_path, true);  // 多线程装甲板检测器
-  auto_aim::Solver solver(config_path);                              // 坐标解算器（将图像坐标转换为世界坐标）
-  auto_aim::Tracker tracker(config_path, solver);                    // 目标追踪器（使用EKF等算法预测目标运动）
-  auto_aim::Aimer aimer(config_path);                                // 瞄准器（计算云台控制量）
-  auto_aim::Shooter shooter(config_path);                            // 发射器（控制发射时机）
+  // 4. 初始化自动瞄准（自瞄）业务模块（配置文件加载自瞄参数：检测阈值、跟踪参数、瞄准参数等）
+  auto_aim::multithread::MultiThreadDetector detector(config_path);  // 多线程检测器：独立线程执行装甲板检测
+  auto_aim::Solver solver(config_path);                              // 自瞄解算器：PnP解算+多坐标系转换
+  auto_aim::Tracker tracker(config_path, solver);                    // 目标跟踪器：基于解算结果实现装甲板连续跟踪
+  auto_aim::Aimer aimer(config_path);                                // 自瞄瞄准器：计算云台需要转动的角度、提前量
+  auto_aim::Shooter shooter(config_path);                            // 发射控制器：计算发射延时、控制发射时机
 
-  // 初始化打符算法模块（能量机关相关）
-  auto_buff::Buff_Detector buff_detector(config_path);  // 能量机关检测器
-  auto_buff::Solver buff_solver(config_path);            // 能量机关解算器
-  auto_buff::SmallTarget buff_small_target;              // 小能量机关目标
-  auto_buff::BigTarget buff_big_target;                  // 大能量机关目标
-  auto_buff::Aimer buff_aimer(config_path);              // 能量机关瞄准器
+  // 5. 初始化自动打符（打符）业务模块（配置文件加载打符参数：符文检测阈值、解算参数、瞄准参数等）
+  auto_buff::Buff_Detector buff_detector(config_path);  // 符文检测器：检测大/小符文中的发光条目标
+  auto_buff::Solver buff_solver(config_path);          // 打符解算器：专属符文的PnP解算+坐标转换
+  auto_buff::SmallTarget buff_small_target;            // 小符文目标管理器：锁定小符文、跟踪目标状态
+  auto_buff::BigTarget buff_big_target;                // 大符文目标管理器：锁定大符文、跟踪目标状态
+  auto_buff::Aimer buff_aimer(config_path);            // 打符瞄准器：专属符文的瞄准角度、提前量计算
 
-  // 初始化命令生成器（多线程环境下生成控制命令）
-  auto_aim::multithread::CommandGener commandgener(shooter, aimer, cboard, plotter, true);
+  // 6. 初始化自瞄多线程指令生成器（解耦瞄准/发射与串口发送，独立处理指令逻辑）
+  auto_aim::multithread::CommandGener commandgener(shooter, aimer, cboard, plotter);
 
-  // 模式控制变量：原子变量确保多线程安全访问当前工作模式
-  std::atomic<io::Mode> mode{io::Mode::idle};  // 当前模式（默认空闲）
-  auto last_mode{io::Mode::idle};              // 上一帧模式（用于检测模式切换）
+  // 7. 系统工作模式管理：原子变量保证多线程下的读写安全（检测线程与主循环均会访问）
+  // 初始模式为空闲（idle），支持模式：idle/auto_aim/small_buff/big_buff
+  std::atomic<io::Mode> mode{io::Mode::idle};
+  // 上一次模式记录：用于检测模式切换，仅在模式变化时打印日志，避免重复输出
+  auto last_mode{io::Mode::idle};
 
-  // 初始化第一个时间点
-  std::chrono::steady_clock::time_point t_prev = std::chrono::steady_clock::now();
-
-  // 启动检测线程：独立线程处理图像检测，避免阻塞主逻辑
+  // 8. 创建**装甲板检测独立线程**：生产者-消费者模型，与主循环并行执行
+  // 作用：单独处理图像采集和装甲板检测（耗时操作），避免阻塞主循环的姿态同步、跟踪、指令生成逻辑
   auto detect_thread = std::thread([&]() 
   {
-    cv::Mat img;  // 存储当前帧图像
-    std::chrono::steady_clock::time_point t;  // 图像时间戳
+    cv::Mat img;  // 存储相机采集的图像
+    std::chrono::steady_clock::time_point t;  // 存储图像采集的时间戳（高精度时钟，微秒级）
 
-    while (!exiter.exit())  // 循环直到程序退出
+    // 检测线程主循环：直到程序触发退出标志才结束
+    while (!exiter.exit()) 
     {
-      // 仅在空闲模式（实际代码中可能应为自瞄模式，此处可能是调试设置）下处理图像
-      if (mode.load() == io::Mode::idle) 
+      // 仅当系统模式为自瞄（auto_aim）时，执行图像采集和检测
+      if (mode.load() == io::Mode::auto_aim) 
       {
-        camera.read(img, t);          // 从相机读取图像和时间戳
-        detector.push(img, t);        // 将图像和时间戳推入检测器处理队列
+        camera.read(img, t);  // 相机采集图像：返回图像+采集时间戳t（时间同步核心）
+        detector.push(img, t); // 将图像和时间戳推入多线程检测器的任务队列，异步执行检测
       } else
-        continue;  // 非目标模式下不处理图像
+        continue;  // 非自瞄模式时，线程空转，减少资源占用
     }
   });
 
-  // 主循环：处理算法逻辑和模式切换
+  // 9. 主程序循环：系统核心总控，处理模式切换、自瞄/打符业务逻辑，直到程序退出
   while (!exiter.exit()) 
   {
-   
-    mode = cboard.mode;  // 从控制板获取当前模式（如自瞄、打符、空闲等）
+    // 从串口板获取当前系统工作模式（由遥控器/上位机通过串口设置），更新到原子变量
+    mode = cboard.mode;
 
-    // 检测模式切换并打印日志
+    // 检测模式是否发生变化：仅在切换时打印日志，记录运行状态
     if (last_mode != mode) 
     {
-      tools::logger()->info("Switch to {}", io::MODES[mode]);  // 打印模式切换信息
-      last_mode = mode.load();  // 更新上一帧模式
+      tools::logger()->info("Switch to {}", io::MODES[mode]);  // 打印模式名称（如"auto_aim"、"small_buff"）
+      last_mode = mode.load();  // 更新上一次模式记录
     }
-    
 
-    /// 自瞄模式逻辑（当前代码中误用idle模式，实际应为auto_aim模式）
-    // if (mode.load() == io::Mode::idle) 
-    // {
-      // 从检测器获取处理后的图像、装甲板检测结果和时间戳
+    /// -------------------------- 自动瞄准模式（auto_aim）处理逻辑 --------------------------
+    if (mode.load() == io::Mode::auto_aim) 
+    {
+      // 1. 从多线程检测器获取检测结果：调试版弹出（含原始图像+检测到的装甲板+采集时间戳t）
+      // 生产者-消费者：detect_thread生产检测结果，主循环消费检测结果
       auto [img, armors, t] = detector.debug_pop();
-      // 根据图像时间戳获取IMU数据（滞后1毫秒，补偿时间同步误差）
+      // 2. 获取指定时间戳的IMU四元数：t-1ms为时间偏移补偿（消除IMU数据读取/传输的微小延时）
+      // 保证IMU姿态与图像采集时间严格同步，避免时间差导致的姿态解算误差
       Eigen::Quaterniond q = cboard.imu_at(t - 1ms);
-      
-      // 可选：录制图像、IMU数据和时间戳（调试用）
+
+      // 可选：记录数据（图像、IMU姿态、时间戳），用于离线调试和问题复现（注释默认关闭，按需启用）
       // recorder.record(img, q, t);
 
-      // 设置云台到世界坐标系的旋转矩阵（用于坐标转换）
+      // 3. 更新自瞄解算器的云台→世界旋转矩阵：将IMU四元数转换为云台绝对姿态，完成姿态同步
       solver.set_R_gimbal2world(q);
 
-      // 将旋转矩阵转换为欧拉角（yaw, pitch, roll），单位弧度
+      // 4. 将云台旋转矩阵转换为欧拉角（yaw/pitch/roll，Z-Y-X顺序），用于后续瞄准计算
       Eigen::Vector3d ypr = tools::eulers(solver.R_gimbal2world(), 2, 1, 0);
-      // 打印云台角度（转换为度）
-      tools::logger()->info("z{:.2f} y{:.2f} x{:.2f} degree", ypr[0], ypr[1], ypr[2]);
 
-      // 追踪装甲板目标（使用EKF预测目标状态）
+      // 5. 目标跟踪：基于检测到的装甲板和时间戳t，实现连续帧装甲板匹配与跟踪，输出跟踪目标
+      // 跟踪器结合解算器结果，提升目标丢失后的找回能力和跟踪稳定性
       auto targets = tracker.track(armors, t);
 
-      // 将目标信息推送给命令生成器，生成并发送控制指令
-      commandgener.push(targets, t, cboard.bullet_speed, ypr);
+      // 6. 将跟踪目标、时间戳、子弹速度、云台欧拉角推入指令生成器队列
+      // 指令生成器异步处理：计算瞄准角度、发射提前量，生成云台/发射机构控制指令并发送到串口板
+      commandgener.push(targets, t, cboard.bullet_speed, ypr);  // 解耦主逻辑与指令生成，提升实时性
 
-      // 计算FPS
-      std::chrono::steady_clock::time_point t_current = std::chrono::steady_clock::now();
-      auto dt = std::chrono::duration_cast<std::chrono::duration<double>>(t_current - t_prev).count();
-      t_prev = t_current;  // 更新上一帧时间点
-      
-      if (dt > 0) 
-      {  // 避免除以零
-          tools::logger()->info("FPS: {:.2f}", 1.0 / dt);
-      }
+    }
 
-      nlohmann::json data;
+    /// -------------------------- 自动打符模式（small_buff/big_buff）处理逻辑 --------------------------
+    else if (mode.load() == io::Mode::small_buff || mode.load() == io::Mode::big_buff) 
+    {
+      // 1. 声明变量：存储采集的图像、IMU四元数、图像采集时间戳
+      cv::Mat img;
+      Eigen::Quaterniond q;
+      std::chrono::steady_clock::time_point t;
 
-      if (!targets.empty()) 
+      // 2. 相机采集图像：返回图像+高精度时间戳t（打符模式为单线程采集，无需多线程）
+      camera.read(img, t);
+      // 3. 获取同步的IMU四元数：t-1ms时间偏移补偿，保证IMU姿态与图像时间一致
+      q = cboard.imu_at(t - 1ms);
+
+      // 可选：记录数据，用于离线调试（注释默认关闭，按需启用）
+      // recorder.record(img, q, t);
+
+      // 4. 更新打符解算器的云台→世界旋转矩阵，完成IMU姿态与解算器同步
+      buff_solver.set_R_gimbal2world(q);
+
+      // 5. 符文检测：输入采集的图像，检测其中的符文发光条目标，返回检测结果
+      auto power_runes = buff_detector.detect(img);
+
+      // 6. 打符解算：对检测到的符文执行PnP解算+多坐标系转换，获取符文的3D坐标和姿态
+      buff_solver.solve(power_runes);
+
+      // 7. 声明打符控制指令：存储云台转动角度、发射指令等
+      io::Command buff_command;
+      // 小符文模式：锁定小符文目标，计算瞄准指令
+      if (mode.load() == io::Mode::small_buff) 
       {
-        auto target = targets.front();
-        tools::draw_text(img, fmt::format("[{}] ", target.outpost_state()), {10, 30}, {255, 255, 255}); 
-
-        // 当前帧target更新后
-        std::vector<Eigen::Vector4d> armor_xyza_list = target.armor_xyza_list();
-        for (const Eigen::Vector4d & xyza : armor_xyza_list) 
-        {
-          auto image_points =
-            solver.reproject_armor(xyza.head(3), xyza[3], target.armor_type, target.name);
-          tools::draw_points(img, image_points, {0, 255, 0});
-        }
-
-        // aimer瞄准位置
-        auto aim_point = aimer.debug_aim_point;
-        Eigen::Vector4d aim_xyza = aim_point.xyza;
-        auto image_points =
-          solver.reproject_armor(aim_xyza.head(3), aim_xyza[3], target.armor_type, target.name);
-        if (aim_point.valid)
-          tools::draw_points(img, image_points, {0, 0, 255});//b,g,r
-        else
-          tools::draw_points(img, image_points, {255, 0, 0});
-
-        
-
-        // 装甲板原始观测数据
-        data["armor_num"] = armors.size();
-        if (!armors.empty()) 
-        {
-          auto min_x = 1e10;
-          auto & armor = armors.front();
-          for (auto & a : armors) 
-          {
-            if (a.center.x < min_x) 
-            {
-              min_x = a.center.x;
-              armor = a;
-            }
-          }  //always left
-          solver.solve(armor);
-          data["distance"] = armor.ypd_in_world[2];
-          data["armor_x"] = armor.xyz_in_world[0];
-          data["armor_y"] = armor.xyz_in_world[1];
-          data["armor_z"] = armor.xyz_in_world[2] * 100;
-          data["armor_yaw"] = armor.ypr_in_world[0] * 57.3;
-          data["armor_yaw_raw"] = armor.yaw_raw * 57.3;
-        }
-
-        // 观测器内部数据
-        Eigen::VectorXd x = target.ekf_x();
-        data["x"] = x[0];
-        data["vx"] = x[1];
-        data["y"] = x[2];
-        data["vy"] = x[3];
-        data["z"] = x[4] * 100;
-        data["vz"] = x[5];
-        data["a"] = x[6] * 57.3;
-        data["w"] = x[7];
-        data["r"] = x[8];
-        data["l"] = x[9];
-        data["h"] = x[10];
-        data["last_id"] = target.last_id;
-
-        // 卡方检验数据
-        data["residual_yaw"] = target.ekf().data.at("residual_yaw");
-        data["residual_pitch"] = target.ekf().data.at("residual_pitch");
-        data["residual_distance"] = target.ekf().data.at("residual_distance");
-        data["residual_angle"] = target.ekf().data.at("residual_angle");
-        data["nis"] = target.ekf().data.at("nis");
-        data["nees"] = target.ekf().data.at("nees");
-        data["nis_fail"] = target.ekf().data.at("nis_fail");
-        data["nees_fail"] = target.ekf().data.at("nees_fail");
-        data["recent_nis_failures"] = target.ekf().data.at("recent_nis_failures");
+        buff_small_target.get_target(power_runes, t);  // 小符文目标锁定：跟踪最新的符文检测结果
+        auto target_copy = buff_small_target;          // 复制目标对象，避免多线程访问冲突
+        // 计算打符瞄准指令：传入目标、时间戳、子弹速度，是否开启提前量补偿
+        buff_command = buff_aimer.aim(target_copy, t, cboard.bullet_speed, true);
       }
+      // 大符文模式：锁定大符文目标，计算瞄准指令
+      else if (mode.load() == io::Mode::big_buff) 
+      {
+        buff_big_target.get_target(power_runes, t);    // 大符文目标锁定：跟踪最新的符文检测结果
+        auto target_copy = buff_big_target;            // 复制目标对象，避免多线程访问冲突
+        // 计算打符瞄准指令：与小符文共用瞄准器，内部根据符文类型适配参数
+        buff_command = buff_aimer.aim(target_copy, t, cboard.bullet_speed, true);
+      }
+      // 8. 发送打符控制指令到串口板：由串口板将指令转发给云台和发射机构，执行瞄准和发射
+      cboard.send(buff_command);
 
-      // 云台响应情况
-      data["gimbal_yaw"] = ypr[0] * 57.3;
-      data["gimbal_pitch"] = ypr[1] * 57.3;
-      data["gimbal_roll"] = ypr[2] * 57.3;
-      data["bullet_speed"] = cboard.bullet_speed;
-      plotter.plot(data);
-
-    //}
-
-    /// 打符模式逻辑（小能量机关或大能量机关）
-    // else if (mode.load() == io::Mode::small_buff || mode.load() == io::Mode::big_buff) 
-    // {
-    //   cv::Mat img;  // 存储当前帧图像
-    //   Eigen::Quaterniond q;  // 存储IMU姿态
-    //   std::chrono::steady_clock::time_point t;  // 时间戳
-
-    //   //camera.read(img, t);          // 读取图像和时间戳
-    //   q = cboard.imu_at(t - 1ms);   // 获取对应时间的IMU数据
-
-    //   // 可选：录制数据
-    //   // recorder.record(img, q, t);
-
-    //   // 设置能量机关解算器的坐标系转换矩阵
-    //   buff_solver.set_R_gimbal2world(q);
-
-    //   // 检测能量机关（识别能量机关装甲板）
-    //   auto power_runes = buff_detector.detect(img);
-
-    //   // 解算能量机关的位置和姿态
-    //   buff_solver.solve(power_runes);
-
-    //   // 根据模式（小/大能量机关）计算控制命令
-    //   io::Command buff_command;
-    //   if (mode.load() == io::Mode::small_buff) 
-    //   {
-    //     buff_small_target.get_target(power_runes, t);  // 获取小能量机关目标
-    //     auto target_copy = buff_small_target;
-    //     // 计算瞄准命令
-    //     buff_command = buff_aimer.aim(target_copy, t, cboard.bullet_speed, true);
-    //   } else if (mode.load() == io::Mode::big_buff) 
-    //   {
-    //     buff_big_target.get_target(power_runes, t);  // 获取大能量机关目标
-    //     auto target_copy = buff_big_target;
-    //     // 计算瞄准命令
-    //     buff_command = buff_aimer.aim(target_copy, t, cboard.bullet_speed, true);
-    //   }
-    //   cboard.send(buff_command);  // 发送打符控制命令到下位机
-
-    // } else
-      //continue;  // 其他模式不处理
+    } else
+      continue;  // 空闲模式（idle）时，主循环空转，减少CPU占用
   }
 
-  // 等待检测线程结束
+  // 10. 程序退出时，等待检测线程执行完毕（线程汇合），保证线程资源正常释放，避免内存泄漏
   detect_thread.join();
 
+  // 程序正常退出，返回0
   return 0;
 }
