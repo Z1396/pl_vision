@@ -73,6 +73,10 @@ else()
     target_sources(io PRIVATE ros2/publish2nav.cpp ros2/ros2.cpp ros2/subscribe2nav.cpp)
 
     # 设置 ROS2 依赖
+    #ament_target_dependencies 是 ROS2 专属的 CMake 命令，它的作用是：
+    #✅ 自动为 io 目标添加 ROS2 头文件路径（不用手动写 /opt/ros/humble/include）；
+    #✅ 自动为 io 目标链接 rclcpp/std_msgs/sp_msgs 库（不用手动 target_link_libraries）；
+    #✅ 自动处理 ROS2 库的依赖关系（比手动加路径 / 链接更可靠）。
     include_directories(${std_msgs_INCLUDE_DIRS})
     ament_target_dependencies(io rclcpp std_msgs sp_msgs)
 endif()
