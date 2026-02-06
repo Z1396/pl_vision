@@ -133,24 +133,30 @@ public:
      */
     void write(can_frame * frame) const
     {
-        if (!ok_) {
+        if (!ok_) 
+        {
             throw std::runtime_error("SocketCAN not connected!");
         }
 
         // 若启用CAN FD模式，自动转为CAN FD帧发送
-        if (enable_canfd_) {
+        if (enable_canfd_) 
+        {
             canfd_frame fd_frame{};
             fd_frame.can_id = frame->can_id;
             fd_frame.len = frame->can_dlc;
             fd_frame.flags = 0; // 标记为CAN 2.0帧
             std::memcpy(fd_frame.data, frame->data, frame->can_dlc);
             
-            if (::write(socket_fd_, &fd_frame, SOCKETCAN_FD_FRAME_SIZE) == -1) {
+            if (::write(socket_fd_, &fd_frame, SOCKETCAN_FD_FRAME_SIZE) == -1) 
+            {
                 throw std::runtime_error("Unable to write CAN 2.0 frame via CAN FD!");
             }
-        } else {
+        } 
+        else 
+        {
             // 原生CAN 2.0发送
-            if (::write(socket_fd_, frame, sizeof(can_frame)) == -1) {
+            if (::write(socket_fd_, frame, sizeof(can_frame)) == -1) 
+            {
                 throw std::runtime_error("Unable to write CAN 2.0 frame!");
             }
         }
@@ -163,17 +169,21 @@ public:
      */
     void write(canfd_frame * frame) const
     {
-        if (!ok_) {
+        if (!ok_) 
+        {
             throw std::runtime_error("SocketCAN not connected!");
         }
-        if (!enable_canfd_) {
+        if (!enable_canfd_) 
+        {
             throw std::runtime_error("CAN FD mode not enabled!");
         }
         // 校验数据长度
-        if (frame->len > SOCKETCAN_FD_MAX_DLEN) {
+        if (frame->len > SOCKETCAN_FD_MAX_DLEN) 
+        {
             throw std::runtime_error("Invalid CAN FD frame data length!");
         }
-        if (::write(socket_fd_, frame, SOCKETCAN_FD_FRAME_SIZE) == -1) {
+        if (::write(socket_fd_, frame, SOCKETCAN_FD_FRAME_SIZE) == -1) 
+        {
             throw std::runtime_error("Unable to write CAN FD frame!");
         }
     }
@@ -207,11 +217,13 @@ private:
             throw std::runtime_error("Error opening socket!");
 
         // 2. 启用CAN FD模式（若配置）
-        if (enable_canfd_) {
+        if (enable_canfd_) 
+        {
             int enable = 1;
             // SOL_CAN_RAW和CAN_RAW_FD_FRAMES已在<linux/can/raw.h>中定义
             if (setsockopt(socket_fd_, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, 
-                           &enable, sizeof(enable)) < 0) {
+                           &enable, sizeof(enable)) < 0) 
+            {
                 ::close(socket_fd_);
                 throw std::runtime_error("Failed to enable CAN FD mode!");
             }
@@ -221,7 +233,8 @@ private:
         // 3. 获取CAN接口的系统索引
         ifreq ifr;
         std::strncpy(ifr.ifr_name, interface_.c_str(), IFNAMSIZ - 1);
-        if (ioctl(socket_fd_, SIOCGIFINDEX, &ifr) < 0) {
+        if (ioctl(socket_fd_, SIOCGIFINDEX, &ifr) < 0) 
+        {
             ::close(socket_fd_);
             throw std::runtime_error("Error getting interface index!");
         }
@@ -231,14 +244,16 @@ private:
         std::memset(&addr, 0, sizeof(sockaddr_can));
         addr.can_family = AF_CAN;
         addr.can_ifindex = ifr.ifr_ifindex;
-        if (bind(socket_fd_, (sockaddr *)&addr, sizeof(sockaddr_can)) < 0) {
+        if (bind(socket_fd_, (sockaddr *)&addr, sizeof(sockaddr_can)) < 0) 
+        {
             ::close(socket_fd_);
             throw std::runtime_error("Error binding socket to interface!");
         }
 
         // 5. 初始化epoll实例
         epoll_fd_ = epoll_create1(0);
-        if (epoll_fd_ == -1) {
+        if (epoll_fd_ == -1) 
+        {
             ::close(socket_fd_);
             throw std::runtime_error("Error creating epoll file descriptor!");
         }
@@ -247,20 +262,25 @@ private:
         epoll_event ev;
         ev.events = EPOLLIN;
         ev.data.fd = socket_fd_;
-        if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, ev.data.fd, &ev)) {
+        if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, ev.data.fd, &ev)) 
+        {
             ::close(socket_fd_);
             ::close(epoll_fd_);
             throw std::runtime_error("Error adding socket to epoll!");
         }
 
         // 7. 创建接收线程
-        read_thread_ = std::thread([this]() {
+        read_thread_ = std::thread([this]() 
+        {
             ok_ = true;
-            while (!quit_) {
+            while (!quit_) 
+            {
                 std::this_thread::sleep_for(10us);
-                try {
+                try 
+                {
                     read();
-                } catch (const std::exception & e) {
+                } catch (const std::exception & e) 
+                {
                     tools::logger()->warn("SocketCAN::read() failed: {}", e.what());
                     ok_ = false;
                     break;
@@ -277,9 +297,11 @@ private:
      */
     void try_open()
     {
-        try {
+        try 
+        {
             open();
-        } catch (const std::exception & e) {
+        } catch (const std::exception & e) 
+        {
             tools::logger()->warn("SocketCAN::open() failed: {}", e.what());
             ok_ = false;
         }
