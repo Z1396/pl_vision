@@ -360,7 +360,8 @@ DPS = 单位时间射击窗口占比 \times 射频 \times 单发子弹伤害
 王骁扬、杨佳轩、奚睿豪、俞选涛、吴圳楠、杨瑞灵、程翔宇
 
 
-2025.10.12:
+2026.2.15
+步骤一:开机如果没写can配置脚本需要自己手动配置can波特率与驱动
     #usb_to_can可能需要的指令(识别、can收发器)
          lsusb | grep PEAK
 
@@ -387,24 +388,23 @@ DPS = 单位时间射击窗口占比 \times 射频 \times 单发子弹伤害
         # 3. 验证激活状态（确认 state 变为 UP）
         ip link show can0
 
+先看坐标系转对了没有看起来是正的：
+    检验方式1.动一个轴是不是对应的坐标系方向有速度其他方向应该几乎没速度，其实可以看demo有demo可视化的样子应该就可以。
 
-        # 1. 先将 can0 接口关闭（解决“设备忙”）
-        sudo ip link set can0 down
+    检验方式2装甲板静止云台带动相机动ekf预测框速度应该几乎为0如果有速度就两个原因1：坐标系有问题；2：重新标一遍相机内参内参一定要准因为一个像素就是一个坐标系姿态尤其对z轴敏感（实在解决不了就给个速度约束（已经对Vz约束了）
 
-        # 2. 设置比特率（1Mbps）
-        sudo ip link set can0 type can bitrate 1000000
+正了之后:
+    就先看云台跟随情况底线：在装甲板Vx >= 3m每秒做到几乎跟随误差1度以内可以通过看shoot标志位跟上了会发1,通过plotjuggle调试工具查看shoot标志位和云台yaw误差的关系，shoot标志位为1时，云台yaw误差应该基本在1度以内（如果有明显的超调或者滞后现象，说明轨迹规划器的效果不好，需要调整参数或者改进算法）
 
-        # 3. 重新启用接口
-        sudo ip link set can0 up
+跟随达到要求就调偏移量:
+    偏移量调完后就可以调# 高速延迟时间（秒）
+    high_speed_delay_time: 0.2 # s
+    # 低速延迟时间（秒），规划器使用此值
+    low_speed_delay_time: 0.12 #了这块目前评感觉吧因为没有裁判系统数据算不出精准整个系统的耗时（就是从发开火指令->电控处理真正开火->弹丸从弹舱到枪口）
 
-        # 4. 验证配置（确认比特率和状态）
-        ip link show can0
-        # 正常输出应包含：
-        # 4: can0: <NOARP,UP,LOWER_UP,ECHO> mtu 16 qdisc pfifo_fast state UP mode DEFAULT group default qlen 1000
-        #    link/can 
-        # 额外验证比特率（需安装 can-utils）
-        sudo apt install -y can-utils
-        candump -L can0  # 无输出则接口正常；或用 ip -details link show can0 查看比特率
+
+
+
 
 
 

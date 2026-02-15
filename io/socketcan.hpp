@@ -65,7 +65,7 @@ public:
      */
     // 修复：恢复CAN 2.0回调参数（can_frame），保证与CBoard的兼容性
     SocketCAN(const std::string & interface, std::function<void(const can_frame & frame)> rx_handler,
-              bool enable_canfd = false)
+              bool enable_canfd = true)
         : interface_(interface),        // 初始化CAN接口名称
           socket_fd_(-1),               // 初始化CAN套接字文件描述符为-1（-1表示未打开/无效）
           epoll_fd_(-1),                // 初始化epoll实例描述符为-1（-1表示未初始化）
