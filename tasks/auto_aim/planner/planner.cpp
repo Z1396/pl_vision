@@ -68,10 +68,12 @@ Plan Planner::plan(Target target, double bullet_speed)
   // 2. 生成MPC所需的参考轨迹（目标未来HORIZON步的角度/角速度参考值）
   double yaw0;                   // 初始偏航角参考值（用于轨迹归一化）
   Trajectory traj;               // 参考轨迹（4×HORIZON矩阵）
-  try {
+  try 
+  {
     yaw0 = aim(target, bullet_speed)(0);  // 计算初始瞄准偏航角
     traj = get_trajectory(target, yaw0, bullet_speed);  // 生成完整参考轨迹
-  } catch (const std::exception & e) {
+  } catch (const std::exception & e) 
+  {
     // 轨迹生成失败（如弹道无解），输出警告并返回"停止控制"指令
     tools::logger()->warn("Unsolvable target {:.2f}", bullet_speed);
     return {false};  // Plan.control = false，停止控制
@@ -147,6 +149,9 @@ Plan Planner::plan(std::optional<Target> target, double bullet_speed)
   target->predict(future);
 
   // 调用重载的plan函数（传入确定目标），返回规划结果
+  /*2. 底层原理（为什么能这么用）
+  std::optional 类内部重载了 * 运算符，
+  也就是说，*target 本质是调用 target.operator*()，直接拿到 std::optional 内部存储的 Target 对象。*/
   return plan(*target, bullet_speed);
 }
 
@@ -235,7 +240,8 @@ Eigen::Matrix<double, 2, 1> Planner::aim(const Target & target, double bullet_sp
   auto min_dist = 1e10;         // 初始化最小距离为极大值
 
   // 遍历所有装甲板，选择距离最近的作为瞄准点（提高瞄准精度）
-  for (auto & xyza : target.armor_xyza_list()) {
+  for (auto & xyza : target.armor_xyza_list()) 
+  {
     auto dist = xyza.head<2>().norm();  // 计算x-y平面距离
     if (dist < min_dist) {
       min_dist = dist;
@@ -249,7 +255,8 @@ Eigen::Matrix<double, 2, 1> Planner::aim(const Target & target, double bullet_sp
   auto azim = std::atan2(xyz.y(), xyz.x());
   // 计算弹道补偿：输入子弹速度、水平距离、高度差，输出补偿后的俯仰角
   auto bullet_traj = tools::Trajectory(bullet_speed, min_dist, xyz.z());
-  if (bullet_traj.unsolvable) {
+  if (bullet_traj.unsolvable) 
+  {
     // 弹道无解（如距离过远、子弹速度不足），抛出异常
     throw std::runtime_error("Unsolvable bullet trajectory!");
   }

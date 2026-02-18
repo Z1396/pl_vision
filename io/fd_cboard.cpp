@@ -91,14 +91,14 @@ void FD_CBoard::send(FD_Send_Command command) const
     fd_frame.data[1] = (command.shoot) ? 1 : 0;
     fd_frame.data[2] = (int16_t)(command.yaw * 1e4) >> 8;
     fd_frame.data[3] = (int16_t)(command.yaw * 1e4);
-    fd_frame.data[6] = (int16_t)(command.yaw_vel * 1e4) >> 8;
-    fd_frame.data[7] = (int16_t)(command.yaw_vel * 1e4);
-    fd_frame.data[10] = (int16_t)(command.yaw_acc * 1e4) >> 8;
-    fd_frame.data[11] = (int16_t)(command.yaw_acc * 1e4);
-    fd_frame.data[4] = (int16_t)(command.pitch * 1e4) >> 8;
-    fd_frame.data[5] = (int16_t)(command.pitch * 1e4);
-    fd_frame.data[8] = (int16_t)(command.pitch_vel * 1e4) >> 8;
-    fd_frame.data[9] = (int16_t)(command.pitch_vel * 1e4);
+    fd_frame.data[4] = (int16_t)(command.yaw_vel * 1e4) >> 8;
+    fd_frame.data[5] = (int16_t)(command.yaw_vel * 1e4);
+    fd_frame.data[6] = (int16_t)(command.yaw_acc * 1e4) >> 8;
+    fd_frame.data[7] = (int16_t)(command.yaw_acc * 1e4);
+    fd_frame.data[8] = (int16_t)(command.pitch * 1e4) >> 8;
+    fd_frame.data[9] = (int16_t)(command.pitch * 1e4);
+    fd_frame.data[10] = (int16_t)(command.pitch_vel * 1e4) >> 8;
+    fd_frame.data[11] = (int16_t)(command.pitch_vel * 1e4);
     fd_frame.data[12] = (int16_t)(command.pitch_acc * 1e4) >> 8;
     fd_frame.data[13] = (int16_t)(command.pitch_acc * 1e4);
     try 
