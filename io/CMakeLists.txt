@@ -4,6 +4,7 @@ find_package(yaml-cpp REQUIRED)
 
 add_subdirectory(serial)
 
+
 # 创建目标 io
 #add_library 是 CMake 中构建模块化项目的核心命令，它和你熟悉的 add_executable 是「姐妹命令」—— add_executable 生成可执行文件（比如 standard），
 #而 add_library 生成库文件（静态库 / 动态库），这也是你的 sp_vision 项目能拆分成 tools/io/auto_aim 等模块的关键
@@ -55,7 +56,7 @@ else()
   message(FATAL_ERROR "Unsupported architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}!")
 endif()
 
-target_link_libraries(io MvCameraControl MVSDK ImageConvert usb-1.0 yaml-cpp serial "/opt/DahuaTech/MVviewer/lib/libMVSDK.so")
+target_link_libraries(io auto_aim MvCameraControl MVSDK ImageConvert usb-1.0 yaml-cpp serial "/opt/DahuaTech/MVviewer/lib/libMVSDK.so")
 
 ################## 检查 ROS 环境 ##################
 find_package(ament_cmake QUIET)

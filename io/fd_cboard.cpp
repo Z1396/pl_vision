@@ -2,6 +2,7 @@
 
 #include "tools/math_tools.hpp"
 #include "tools/yaml.hpp"
+#include "tasks/auto_aim/planner/planner.hpp"
 
 namespace io
 {
@@ -80,7 +81,7 @@ Eigen::Quaterniond FD_CBoard::imu_at(std::chrono::steady_clock::time_point times
     return q_c;
 }
 
-void FD_CBoard::send(FD_Command command) const
+void FD_CBoard::send(FD_Send_Command command) const
 {
     canfd_frame fd_frame{};
     fd_frame.can_id = send_canid_;
@@ -132,7 +133,10 @@ void FD_CBoard::callback(const canfd_frame & frame)
         auto y = (int16_t)(frame.data[2] << 8 | frame.data[3]) / 1e4;  // y分量（数据2-3字节）
         auto z = (int16_t)(frame.data[4] << 8 | frame.data[5]) / 1e4;  // z分量（数据4-5字节）
         auto w = (int16_t)(frame.data[6] << 8 | frame.data[7]) / 1e4;  // w分量（数据6-7字节）
-
+        receive_command_.yaw = (int16_t)(frame.data[8] << 8 | frame.data[9]) / 1e4;  // 云台反馈角度（数据8-9字节）
+        receive_command_.yaw_vel = (int16_t)(frame.data[10] << 8 | frame.data[11]) / 1e4;  // 云台横滚角速度（数据10-11字节）
+        receive_command_.pitch = (int16_t)(frame.data[12] << 8 | frame.data[13]) / 1e4;  // 云台反馈俯仰角（数据12-13字节）
+        receive_command_.pitch_vel = (int16_t)(frame.data[14] << 8 | frame.data[15]) / 1e4;  // 云台俯仰角速度（数据14-15字节）
         // 1.2 四元数合法性校验：四元数模长应接近1（w² + x² + y² + z² ≈ 1）
         // 若偏差超过0.01，则判定为无效数据，记录警告日志并返回
         if (std::abs(x * x + y * y + z * z + w * w - 1) > 1e-2) 
@@ -155,7 +159,7 @@ void FD_CBoard::callback(const canfd_frame & frame)
         // 解析射击模式（数据3字节，转换为ShootMode枚举类型）
         shoot_mode = ShootMode(frame.data[3]);
         // 解析云台反馈角度（数据4-5字节，16位有符号整数，除以1e4转换为弧度）
-        ft_angle = (int16_t)(frame.data[4] << 8 |  frame.data[5]) / 1e4;
+        ft_angle = (int16_t)(frame.data[4] << 8 | frame.data[5]) / 1e4;
 
         // 2.2 限制日志输出频率为1Hz（避免高频数据刷屏，仅每秒输出一次有效信息）
         static auto last_log_time = std::chrono::steady_clock::time_point::min();  // 静态变量，记录上次日志时间
@@ -176,6 +180,20 @@ void FD_CBoard::callback(const canfd_frame & frame)
     }
 
     // （注：可根据需要添加更多else if分支，处理其他CAN ID的帧数据）
+}
+
+FD_Send_Command FD_CBoard::plan_to_command(const auto_aim::Plan & plan) const
+{
+    FD_Send_Command command{};
+    command.control = plan.control;  // 始终控制
+    command.shoot = plan.fire;  // 根据计划设置射击指令
+    command.yaw = plan.yaw;  // 从计划获取目标横滚角
+    command.pitch = plan.pitch;  // 从计划获取目标俯仰角
+    command.yaw_vel = plan.yaw_vel;  // 从计划获取横滚角速度
+    command.pitch_vel = plan.pitch_vel;  // 从计划获取俯仰角速度
+    command.yaw_acc = plan.yaw_acc;  // 从计划获取横滚角加速度
+    command.pitch_acc = plan.pitch_acc;  // 从计划获取俯仰角加速度
+    return command;
 }
 
 // 实现方式有待改进

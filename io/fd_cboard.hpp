@@ -21,6 +21,11 @@
 #include "tools/logger.hpp"  // 工具模块日志类：实现日志打印（INFO/WARN/ERROR），便于问题排查
 #include "tools/thread_safe_queue.hpp"  // 工具模块线程安全队列：多线程下安全传递IMU数据，避免数据竞争
 
+// Forward declaration for auto_aim::Plan to resolve type in function signature
+namespace auto_aim {
+struct Plan;
+}
+
 namespace io
 {
     /**
@@ -50,6 +55,7 @@ public:
    */
   FD_CBoard(const std::string & config_path);
 
+  FD_Receive_Command state() const { return receive_command_; }
   /**
    * @brief 根据时间戳查询对应时刻的IMU姿态数据（四元数）
    * @param timestamp 目标查询时间戳（稳态时钟），由上层业务传入（如图像采集时间戳）
@@ -67,7 +73,9 @@ public:
    * @note 底层调用SocketCAN的发送接口，将Command对象封装为CAN帧后下发至下位机
    * @note 线程安全：SocketCAN内部保证CAN帧发送的原子性，支持多线程调用
    */
-  void send(FD_Command command) const;
+  void send(FD_Send_Command command) const;
+
+  FD_Send_Command plan_to_command(const auto_aim::Plan & plan) const;
 
 private:
   /**
@@ -86,7 +94,7 @@ private:
   SocketCAN can_;                          // CAN总线通信对象：封装CAN底层收发逻辑，是与CAN板卡通信的核心句柄
   IMUData data_ahead_;                     // 前向IMU数据缓存：存储最新的IMU数据（时间戳较新），用于时间戳匹配的前向插值
   IMUData data_behind_;                    // 后向IMU数据缓存：存储上一帧IMU数据（时间戳较旧），用于时间戳匹配的后向插值
-
+  FD_Receive_Command receive_command_;      // 接收的下位机控制指令结构体
   // CAN帧ID配置：从yaml配置文件读取，表征不同类型数据的CAN帧标识，用于解析CAN板卡上传的数据
   int quaternion_canid_;   // IMU四元数数据对应的CAN帧ID，解析姿态数据时匹配该ID
   int bullet_speed_canid_; // 弹丸速度数据对应的CAN帧ID，解析弹速数据时匹配该ID
