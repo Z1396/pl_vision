@@ -54,6 +54,9 @@ namespace io
 class SocketCAN
 {
 public:
+
+    using CANFdRxHandler = std::function<void(const canfd_frame & frame)>;
+    using CAN20RxHandler = std::function<void(const can_frame & frame)>;
     /**
      * @brief 构造函数：初始化SocketCAN通信（兼容CAN 2.0 / CAN FD），创建接收线程和守护线程
      * @param interface CAN总线接口名称（如"can0"、"can1"），需提前在系统中配置
@@ -64,43 +67,36 @@ public:
      * @note 守护线程为后台线程，析构时会自动join，避免程序退出时的资源泄漏
      */
     // 修复：恢复CAN 2.0回调参数（can_frame），保证与CBoard的兼容性
-    SocketCAN(const std::string & interface, std::function<void(const can_frame & frame)> rx_handler,
+    SocketCAN(const std::string & interface, CAN20RxHandler rx_handler,
               bool enable_canfd = true)
         : interface_(interface),        // 初始化CAN接口名称
           socket_fd_(-1),               // 初始化CAN套接字文件描述符为-1（-1表示未打开/无效）
           epoll_fd_(-1),                // 初始化epoll实例描述符为-1（-1表示未初始化）
-          rx_handler_(rx_handler),      // 初始化接收回调函数，保存上层业务的处理逻辑
           quit_(false),                 // 初始化退出标志为false（线程正常运行）
           ok_(false),                   // 初始化连接状态标志为false（未就绪，需尝试连接）
-          enable_canfd_(enable_canfd)   // 初始化CAN FD模式开关
+          enable_canfd_(enable_canfd),   // 初始化CAN FD模式开关
+          can20_rx_handler_(std::move(rx_handler)),
+          canfd_rx_handler_(nullptr)
     {
         // 首次尝试打开并初始化CAN连接（失败仅打印日志，不终止程序，由守护线程后续重连）
         try_open();
+        start_daemon_thread();
+    }
 
-        // 创建守护线程：负责监控CAN连接状态，异常时自动重连
-        // 采用lambda表达式作为线程入口，捕获this指针以访问类成员变量和方法
-        daemon_thread_ = std::thread{[this]
-        {
-            // 守护线程主循环：直到收到退出信号（quit_=true）才退出
-            while (!quit_)
-            {
-                // 每100毫秒检查一次连接状态，降低CPU占用率
-                std::this_thread::sleep_for(100ms);
-
-                // 连接状态正常，跳过后续重连逻辑，继续下一次检查
-                if (ok_) continue;
-
-                // 连接异常：先等待接收线程结束（避免线程竞态和资源访问冲突）
-                if (read_thread_.joinable())
-                    read_thread_.join();
-
-                // 关闭当前无效的CAN连接和相关资源
-                close();
-
-                // 尝试重新打开并初始化CAN连接
-                try_open();
-            }
-        }};
+    SocketCAN(const std::string & interface, CANFdRxHandler rx_handler,
+            bool enable_canfd = true)
+    : interface_(interface),        // 初始化CAN接口名称
+        socket_fd_(-1),               // 初始化CAN套接字文件描述符为-1（-1表示未打开/无效）
+        epoll_fd_(-1),                // 初始化epoll实例描述符为-1（-1表示未初始化）
+        quit_(false),                 // 初始化退出标志为false（线程正常运行）
+        ok_(false),                   // 初始化连接状态标志为false（未就绪，需尝试连接）
+        enable_canfd_(enable_canfd),   // 初始化CAN FD模式开关
+        can20_rx_handler_(nullptr),
+        canfd_rx_handler_(std::move(rx_handler))
+    {
+        // 首次尝试打开并初始化CAN连接（失败仅打印日志，不终止程序，由守护线程后续重连）
+        try_open();
+        start_daemon_thread();
     }
 
     /**
@@ -200,9 +196,28 @@ private:
     std::thread daemon_thread_;              // 守护线程：监控连接状态，异常时自动重连
     canfd_frame fd_frame_;                   // CAN FD帧缓冲区（兼容CAN 2.0）
     epoll_event events_[MAX_EVENTS];         // epoll事件数组：存储epoll_wait检测到的就绪事件
-    // 修复：回调函数参数恢复为can_frame，保证兼容性
-    std::function<void(const can_frame & frame)> rx_handler_;
+    CAN20RxHandler can20_rx_handler_;  // 2.0帧回调（兼容）
+    CANFdRxHandler canfd_rx_handler_;  // FD帧回调（完整数据）
 
+
+    // 提取守护线程逻辑（简化构造函数）
+    void start_daemon_thread() 
+    {
+        daemon_thread_ = std::thread{[this]
+        {
+            while (!quit_)
+            {
+                std::this_thread::sleep_for(100ms);
+                if (ok_) continue;
+
+                if (read_thread_.joinable())
+                    read_thread_.join();
+
+                close();
+                try_open();
+            }
+        }};
+    }
     /**
      * @brief 实际打开并初始化CAN总线连接的核心方法
      * @details 完成SocketCAN全流程初始化：创建原始套接字 → 获取接口索引 → 绑定套接字 → 初始化epoll → 创建接收线程
@@ -308,8 +323,8 @@ private:
     }
 
     /**
-     * @brief 读取CAN总线数据并触发回调的核心方法
-     * @details 兼容CAN 2.0 / CAN FD帧，自动转换为can_frame回调给上层
+     * @brief 重构read()方法：自适应触发FD/2.0回调
+     * 核心逻辑：优先触发FD回调（传递完整数据），无FD回调则降级触发2.0回调
      */
     void read()
     {
@@ -317,20 +332,31 @@ private:
         if (num_events == -1)
             throw std::runtime_error("Error waiting for events!");
 
-        for (int i = 0; i < num_events; i++) {
+        for (int i = 0; i < num_events; i++) 
+        {
             ssize_t num_bytes = recv(socket_fd_, &fd_frame_, SOCKETCAN_FD_FRAME_SIZE, MSG_DONTWAIT);
             if (num_bytes == -1)
                 throw std::runtime_error("Error reading from SocketCAN!");
 
-            // 转换为CAN 2.0帧回调（保证上层兼容性）
-            can_frame frame{};
-            frame.can_id = fd_frame_.can_id;
-            // 限制长度为CAN 2.0的8字节（若为CAN FD帧，仅取前8字节）
-            frame.can_dlc = std::min((int)fd_frame_.len, 8);
-            std::memcpy(frame.data, fd_frame_.data, frame.can_dlc);
-
-            // 调用上层回调
-            rx_handler_(frame);
+            // 1. 优先触发FD帧回调（传递完整的CAN FD数据，包括超过8字节的部分）
+            if (canfd_rx_handler_) 
+            {
+                canfd_rx_handler_(fd_frame_);
+            }
+            // 2. 无FD回调则降级触发2.0帧回调（兼容原有逻辑）
+            else if (can20_rx_handler_) 
+            {
+                can_frame frame{};
+                frame.can_id = fd_frame_.can_id;
+                frame.can_dlc = std::min((int)fd_frame_.len, 8);
+                std::memcpy(frame.data, fd_frame_.data, frame.can_dlc);
+                can20_rx_handler_(frame);
+            }
+            // 3. 无任何回调：打印警告（避免数据丢失）
+            else 
+            {
+                tools::logger()->warn("No CAN rx handler registered, frame dropped!");
+            }
         }
     }
 
