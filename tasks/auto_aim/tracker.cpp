@@ -69,7 +69,7 @@ std::list<Target> Tracker::track(
     // 第一次排序：按装甲板中心到图像中心的距离从小到大排序（优先选择更居中的目标）
     armors.sort([](const Armor & a, const Armor & b) 
     {
-        cv::Point2f img_center(1440 / 2, 1080 / 2);  // 图像中心坐标（TODO：应动态获取分辨率）
+        cv::Point2f img_center(1440.0 / 2, 1080.0 / 2);  // 图像中心坐标（TODO：应动态获取分辨率）  
         auto distance_1 = cv::norm(a.center - img_center);  // 装甲板a到中心的距离
         auto distance_2 = cv::norm(b.center - img_center);  // 装甲板b到中心的距离
         return distance_1 < distance_2;  // 距离小的排在前面
@@ -146,7 +146,7 @@ std::tuple<omniperception::DetectionResult, std::list<Target>> Tracker::track(
   // 优先选择靠近图像中心的装甲板
   armors.sort([](const Armor & a, const Armor & b) 
   {
-    cv::Point2f img_center(1440 / 2, 1080 / 2);  // TODO
+    cv::Point2f img_center(1440.0 / 2, 1080.0 / 2);  // TODO: 应动态获取分辨率  
     auto distance_1 = cv::norm(a.center - img_center);
     auto distance_2 = cv::norm(b.center - img_center);
     return distance_1 < distance_2;
