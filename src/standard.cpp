@@ -20,6 +20,7 @@
 #include "tools/math_tools.hpp"              // 数学工具：矩阵运算、欧拉角/四元数转换等
 #include "tools/plotter.hpp"                 // 绘图模块：实时绘制目标框、跟踪轨迹等
 #include "tools/recorder.hpp"                // 录制模块：录制图像、姿态数据用于后续分析
+#include "tools/websocket_server.hpp"        // WebSocket服务器：用于网页端可视化
 
 //#include "../dahua/dhua.h"  // 大华相机SDK头文件（注释：当前使用默认相机模块，预留扩展）
 
@@ -50,6 +51,8 @@ int main(int argc, char * argv[])
   tools::Exiter exiter;       // 退出控制器：监听Ctrl+C信号，设置exit()标志
   tools::Plotter plotter;     // 绘图器：实时在图像上绘制目标框、跟踪ID、瞄准线等
   tools::Recorder recorder;   // 数据录制器：录制图像、IMU姿态、时间戳，用于赛后复盘
+  tools::WebSocketServer ws_server(8080);  // WebSocket服务器：用于网页端可视化（端口8080）
+  ws_server.start();          // 启动WebSocket服务器
   //auto_aim::Target target;    // 目标信息存储：存储当前目标的状态、位置等信息
 
   /* 3. 初始化IO模块（硬件交互） */
@@ -262,6 +265,31 @@ int main(int argc, char * argv[])
     cv::imshow("reprojection", img);
     auto key = cv::waitKey(1);
     if (key == 'q') break;
+    
+    // ====================== 新增：WebSocket广播 ======================
+    std::vector<uchar> jpeg_buffer;
+    cv::imencode(".jpg", img, jpeg_buffer);
+    std::string jpeg_data(jpeg_buffer.begin(), jpeg_buffer.end());
+    ws_server.broadcastVideo(jpeg_data);
+    
+    nlohmann::json ws_data;
+    if (!targets.empty()) {
+      auto target = targets.front();
+      Eigen::VectorXd x = target.ekf_x();
+      ws_data["position"] = {
+        {"x", x[0]},
+        {"y", x[2]},
+        {"z", x[4]}
+      };
+      ws_data["velocity"] = {
+        {"vx", x[1] * 10},
+        {"vy", x[3]},
+        {"vz", x[5]}
+      };
+      ws_data["fps"] = fps;
+      ws_server.broadcastData(ws_data);
+    }
+    // ==================================================================
   
   }
 

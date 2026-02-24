@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SP Vision - 波形可视化</title>
+    <script src="echarts.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            padding: 20px;
+            margin: 0;
+        }
+        .header {
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status {
+            font-size: 14px;
+        }
+        .connected {
+            color: #4caf50;
+        }
+        .disconnected {
+            color: #f44336;
+        }
+        .toolbar {
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .toolbar button {
+            background: #3d3d3d;
+            color: #e0e0e0;
+            border: 1px solid #4fc3f7;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .toolbar button:hover {
+            background: #4fc3f7;
+            color: #1e1e1e;
+        }
+        .toolbar button.active {
+            background: #4fc3f7;
+            color: #1e1e1e;
+        }
+        .toolbar select {
+            background: #3d3d3d;
+            color: #e0e0e0;
+            border: 1px solid #4fc3f7;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .video-section {
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            height: 35vh;
+            overflow: hidden;
+        }
+        .video-section img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .info-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .info-item {
+            background: #2d2d2d;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 3px solid #4fc3f7;
+        }
+        .info-label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .chart-container {
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 8px;
+            min-height: 200px;
+        }
+        .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #4fc3f7;
+        }
+        .chart {
+            width: 100%;
+            height: 160px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 SP Vision 波形可视化</h1>
+        <div id="status" class="status disconnected">未连接</div>
+    </div>
+    
+    <div class="toolbar">
+        <button onclick="resetZoom()">🔍 重置缩放</button>
+        <button onclick="toggleAutoScroll()" id="autoScrollBtn" class="active">📜 自动滚动</button>
+        <button onclick="clearData()">🗑️ 清除数据</button>
+        <select id="dataPoints" onchange="updateDataPoints()">
+            <option value="100">100点</option>
+            <option value="200" selected>200点</option>
+            <option value="500">500点</option>
+            <option value="1000">1000点</option>
+        </select>
+    </div>
+    
+    <div class="video-section">
+        <img id="videoFeed" src="" alt="视频流">
+    </div>
+    
+    <div class="info-bar">
+        <div class="info-item">
+            <div class="info-label">装甲板数量</div>
+            <div class="info-value" id="armorNum">0</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">帧延迟</div>
+            <div class="info-value" id="frameDelay">0 ms</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">目标ID</div>
+            <div class="info-value" id="targetId">-</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">发射状态</div>
+            <div class="info-value" id="shootStatus">否</div>
+        </div>
+    </div>
+    
+    <div class="charts-grid">
+        <div class="chart-container">
+            <div class="chart-title">装甲板位置</div>
+            <div id="armorPositionChart" class="chart"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">装甲板航向角</div>
+            <div id="armorYawChart" class="chart"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">云台角度</div>
+            <div id="gimbalAngleChart" class="chart"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">指令角度</div>
+            <div id="commandAngleChart" class="chart"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">目标位置 (XYZ)</div>
+            <div id="targetPositionChart" class="chart"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">目标速度 (VX/VY/VZ)</div>
+            <div id="targetVelocityChart" class="chart"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">目标角度和旋转速度</div>
+            <div id="targetAngleChart" class="chart"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">目标尺寸 (R/L/H)</div>
+            <div id="targetSizeChart" class="chart"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">卡尔曼滤波残差</div>
+            <div id="residualChart" class="chart"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">NIS和NEES</div>
+            <div id="nisNeesChart" class="chart"></div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">帧延迟</div>
+            <div id="frameDelayChart" class="chart"></div>
+        </div>
+    </div>
+
+    <script>
+        const WS_URL = 'ws://192.168.43.247:8080';
+        let ws;
+        let MAX_DATA_POINTS = 200;
+        let autoScroll = true;
+        
+        const timeData = [];
+        const armorXData = [];
+        const armorYData = [];
+        const armorYawData = [];
+        const armorYawRawData = [];
+        const gimbalYawData = [];
+        const gimbalPitchData = [];
+        const cmdYawData = [];
+        const cmdPitchData = [];
+        const targetXData = [];
+        const targetYData = [];
+        const targetZData = [];
+        const targetVXData = [];
+        const targetVYData = [];
+        const targetVZData = [];
+        const targetAData = [];
+        const targetWData = [];
+        const targetRData = [];
+        const targetLData = [];
+        const targetHData = [];
+        const residualYawData = [];
+        const residualPitchData = [];
+        const residualDistanceData = [];
+        const residualAngleData = [];
+        const nisData = [];
+        const neesData = [];
+        const frameDelayData = [];
+        
+        let armorPositionChart, armorYawChart, gimbalAngleChart, commandAngleChart;
+        let targetPositionChart, targetVelocityChart, targetAngleChart, targetSizeChart;
+        let residualChart, nisNeesChart, frameDelayChart;
+        
+        const commonOption = {
+            animation: false,
+            backgroundColor: 'transparent',
+            grid: {
+                left: '8%',
+                right: '4%',
+                bottom: '15%',
+                top: '15%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: timeData,
+                axisLabel: {
+                    color: '#888',
+                    fontSize: 10,
+                    rotate: 45
+                },
+                axisLine: {
+                    lineStyle: {
+                        color: '#3d3d3d'
+                    }
+                },
+                axisTick: {
+                    lineStyle: {
+                        color: '#3d3d3d'
+                    }
+                }
+            },
+            yAxis: {
+                type: 'value',
+                axisLabel: {
+                    color: '#888',
+                    fontSize: 10
+                },
+                axisLine: {
+                    lineStyle: {
+                        color: '#3d3d3d'
+                    }
+                },
+                splitLine: {
+                    lineStyle: {
+                        color: '#3d3d3d',
+                        type: 'dashed'
+                    }
+                }
+            },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'cross',
+                    label: {
+                        backgroundColor: '#2d2d2d'
+                    }
+                },
+                backgroundColor: 'rgba(45, 45, 45, 0.95)',
+                borderColor: '#4fc3f7',
+                textStyle: {
+                    color: '#e0e0e0'
+                }
+            },
+            dataZoom: [
+                {
+                    type: 'inside',
+                    start: 0,
+                    end: 100,
+                    zoomOnMouseWheel: true,
+                    moveOnMouseMove: true,
+                    moveOnMouseWheel: false
+                },
+                {
+                    type: 'slider',
+                    start: 0,
+                    end: 100,
+                    height: 20,
+                    bottom: 5,
+                    borderColor: '#3d3d3d',
+                    fillerColor: 'rgba(79, 195, 247, 0.2)',
+                    handleStyle: {
+                        color: '#4fc3f7'
+                    },
+                    textStyle: {
+                        color: '#888'
+                    }
+                }
+            ],
+            legend: {
+                textStyle: {
+                    color: '#e0e0e0',
+                    fontSize: 11
+                },
+                top: 0
+            }
+        };
+        
+        const lineStyle = {
+            width: 2,
+            smooth: true,
+            symbol: 'none',
+            lineStyle: {
+                width: 2
+            }
+        };
+        
+        function initCharts() {
+            console.log('初始化图表...');
+            
+            try {
+                armorPositionChart = echarts.init(document.getElementById('armorPositionChart'));
+                armorYawChart = echarts.init(document.getElementById('armorYawChart'));
+                gimbalAngleChart = echarts.init(document.getElementById('gimbalAngleChart'));
+                commandAngleChart = echarts.init(document.getElementById('commandAngleChart'));
+                targetPositionChart = echarts.init(document.getElementById('targetPositionChart'));
+                targetVelocityChart = echarts.init(document.getElementById('targetVelocityChart'));
+                targetAngleChart = echarts.init(document.getElementById('targetAngleChart'));
+                targetSizeChart = echarts.init(document.getElementById('targetSizeChart'));
+                residualChart = echarts.init(document.getElementById('residualChart'));
+                nisNeesChart = echarts.init(document.getElementById('nisNeesChart'));
+                frameDelayChart = echarts.init(document.getElementById('frameDelayChart'));
+                
+                console.log('所有图表初始化完成');
+                
+                armorPositionChart.setOption({
+                    ...commonOption,
+                    legend: { data: ['X', 'Y'] },
+                    series: [
+                        { name: 'X', type: 'line', data: armorXData, itemStyle: { color: '#2196F3' }, ...lineStyle },
+                        { name: 'Y', type: 'line', data: armorYData, itemStyle: { color: '#4CAF50' }, ...lineStyle }
+                    ]
+                });
+                
+                armorYawChart.setOption({
+                    ...commonOption,
+                    legend: { data: ['航向角', '原始航向角'] },
+                    series: [
+                        { name: '航向角', type: 'line', data: armorYawData, itemStyle: { color: '#FF9800' }, ...lineStyle },
+                        { name: '原始航向角', type: 'line', data: armorYawRawData, itemStyle: { color: '#FF5722' }, ...lineStyle }
+                    ]
+                });
+                
+                gimbalAngleChart.setOption({
+                    ...commonOption,
+                    legend: { data: ['云台Yaw', '云台Pitch'] },
+                    series: [
+                        { name: '云台Yaw', type: 'line', data: gimbalYawData, itemStyle: { color: '#9C27B0' }, ...lineStyle },
+                        { name: '云台Pitch', type: 'line', data: gimbalPitchData, itemStyle: { color: '#E91E63' }, ...lineStyle }
+                    ]
+                });
+                
+                commandAngleChart.setOption({
+                    ...commonOption,
+                    legend: { data: ['指令Yaw', '指令Pitch'] },
+                    series: [
+                        { name: '指令Yaw', type: 'line', data: cmdYawData, itemStyle: { color: '#00BCD4' }, ...lineStyle },
+                        { name: '指令Pitch', type: 'line', data: cmdPitchData, itemStyle: { color: '#009688' }, ...lineStyle }
+                    ]
+                });
+                
+                targetPositionChart.setOption({
+                    ...commonOption,
+                    legend: { data: ['X', 'Y', 'Z'] },
+                    series: [
+                        { name: 'X', type: 'line', data: targetXData, itemStyle: { color: '#2196F3' }, ...lineStyle },
+                        { name: 'Y', type: 'line', data: targetYData, itemStyle: { color: '#4CAF50' }, ...lineStyle },
+                        { name: 'Z', type: 'line', data: targetZData, itemStyle: { color: '#FF9800' }, ...lineStyle }
+                    ]
+                });
+                
+                targetVelocityChart.setOption({
+                    ...commonOption,
+                    legend: { data: ['VX', 'VY', 'VZ'] },
+                    series: [
+                        { name: 'VX', type: 'line', data: targetVXData, itemStyle: { color: '#2196F3' }, ...lineStyle },
+                        { name: 'VY', type: 'line', data: targetVYData, itemStyle: { color: '#4CAF50' }, ...lineStyle },
+                        { name: 'VZ', type: 'line', data: targetVZData, itemStyle: { color: '#FF9800' }, ...lineStyle }
+                    ]
+                });
+                
+                targetAngleChart.setOption({
+                    ...commonOption,
+                    legend: { data: ['角度', '旋转速度'] },
+                    series: [
+                        { name: '角度', type: 'line', data: targetAData, itemStyle: { color: '#9C27B0' }, ...lineStyle },
+                        { name: '旋转速度', type: 'line', data: targetWData, itemStyle: { color: '#E91E63' }, ...lineStyle }
+                    ]
+                });
+                
+                targetSizeChart.setOption({
+                    ...commonOption,
+                    legend: { data: ['半径', '长度', '高度'] },
+                    series: [
+                        { name: '半径', type: 'line', data: targetRData, itemStyle: { color: '#2196F3' }, ...lineStyle },
+                        { name: '长度', type: 'line', data: targetLData, itemStyle: { color: '#4CAF50' }, ...lineStyle },
+                        { name: '高度', type: 'line', data: targetHData, itemStyle: { color: '#FF9800' }, ...lineStyle }
+                    ]
+                });
+                
+                residualChart.setOption({
+                    ...commonOption,
+                    legend: { data: ['Yaw残差', 'Pitch残差', '距离残差', '角度残差'] },
+                    series: [
+                        { name: 'Yaw残差', type: 'line', data: residualYawData, itemStyle: { color: '#2196F3' }, ...lineStyle },
+                        { name: 'Pitch残差', type: 'line', data: residualPitchData, itemStyle: { color: '#4CAF50' }, ...lineStyle },
+                        { name: '距离残差', type: 'line', data: residualDistanceData, itemStyle: { color: '#FF9800' }, ...lineStyle },
+                        { name: '角度残差', type: 'line', data: residualAngleData, itemStyle: { color: '#FF5722' }, ...lineStyle }
+                    ]
+                });
+                
+                nisNeesChart.setOption({
+                    ...commonOption,
+                    legend: { data: ['NIS', 'NEES'] },
+                    series: [
+                        { name: 'NIS', type: 'line', data: nisData, itemStyle: { color: '#9C27B0' }, ...lineStyle },
+                        { name: 'NEES', type: 'line', data: neesData, itemStyle: { color: '#E91E63' }, ...lineStyle }
+                    ]
+                });
+                
+                frameDelayChart.setOption({
+                    ...commonOption,
+                    legend: { data: ['帧延迟'] },
+                    series: [
+                        { name: '帧延迟', type: 'line', data: frameDelayData, itemStyle: { color: '#00BCD4' }, ...lineStyle }
+                    ]
+                });
+                
+                console.log('所有图表配置完成');
+            } catch (error) {
+                console.error('图表初始化失败:', error);
+            }
+        }
+        
+        function updateCharts(data) {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString();
+            
+            if (timeData.length >= MAX_DATA_POINTS) {
+                timeData.shift();
+                armorXData.shift();
+                armorYData.shift();
+                armorYawData.shift();
+                armorYawRawData.shift();
+                gimbalYawData.shift();
+                gimbalPitchData.shift();
+                cmdYawData.shift();
+                cmdPitchData.shift();
+                targetXData.shift();
+                targetYData.shift();
+                targetZData.shift();
+                targetVXData.shift();
+                targetVYData.shift();
+                targetVZData.shift();
+                targetAData.shift();
+                targetWData.shift();
+                targetRData.shift();
+                targetLData.shift();
+                targetHData.shift();
+                residualYawData.shift();
+                residualPitchData.shift();
+                residualDistanceData.shift();
+                residualAngleData.shift();
+                nisData.shift();
+                neesData.shift();
+                frameDelayData.shift();
+            }
+            
+            timeData.push(timeStr);
+            
+            if (data.armor_x !== undefined) armorXData.push(data.armor_x);
+            if (data.armor_y !== undefined) armorYData.push(data.armor_y);
+            if (data.armor_yaw !== undefined) armorYawData.push(data.armor_yaw);
+            if (data.armor_yaw_raw !== undefined) armorYawRawData.push(data.armor_yaw_raw);
+            if (data.gimbal_yaw !== undefined) gimbalYawData.push(data.gimbal_yaw);
+            if (data.gimbal_pitch !== undefined) gimbalPitchData.push(data.gimbal_pitch);
+            if (data.cmd_yaw !== undefined) cmdYawData.push(data.cmd_yaw);
+            if (data.cmd_pitch !== undefined) cmdPitchData.push(data.cmd_pitch);
+            if (data.x !== undefined) targetXData.push(data.x);
+            if (data.y !== undefined) targetYData.push(data.y);
+            if (data.z !== undefined) targetZData.push(data.z);
+            if (data.vx !== undefined) targetVXData.push(data.vx);
+            if (data.vy !== undefined) targetVYData.push(data.vy);
+            if (data.vz !== undefined) targetVZData.push(data.vz);
+            if (data.a !== undefined) targetAData.push(data.a);
+            if (data.w !== undefined) targetWData.push(data.w);
+            if (data.r !== undefined) targetRData.push(data.r);
+            if (data.l !== undefined) targetLData.push(data.l);
+            if (data.h !== undefined) targetHData.push(data.h);
+            if (data.residual_yaw !== undefined) residualYawData.push(data.residual_yaw);
+            if (data.residual_pitch !== undefined) residualPitchData.push(data.residual_pitch);
+            if (data.residual_distance !== undefined) residualDistanceData.push(data.residual_distance);
+            if (data.residual_angle !== undefined) residualAngleData.push(data.residual_angle);
+            if (data.nis !== undefined) nisData.push(data.nis);
+            if (data.nees !== undefined) neesData.push(data.nees);
+            if (data.frame_delay_ms !== undefined) frameDelayData.push(data.frame_delay_ms);
+            
+            if (armorPositionChart) {
+                armorPositionChart.setOption({
+                    xAxis: { data: timeData },
+                    series: [{ data: armorXData }, { data: armorYData }]
+                });
+            }
+            
+            if (armorYawChart) {
+                armorYawChart.setOption({
+                    xAxis: { data: timeData },
+                    series: [{ data: armorYawData }, { data: armorYawRawData }]
+                });
+            }
+            
+            if (gimbalAngleChart) {
+                gimbalAngleChart.setOption({
+                    xAxis: { data: timeData },
+                    series: [{ data: gimbalYawData }, { data: gimbalPitchData }]
+                });
+            }
+            
+            if (commandAngleChart) {
+                commandAngleChart.setOption({
+                    xAxis: { data: timeData },
+                    series: [{ data: cmdYawData }, { data: cmdPitchData }]
+                });
+            }
+            
+            if (targetPositionChart) {
+                targetPositionChart.setOption({
+                    xAxis: { data: timeData },
+                    series: [{ data: targetXData }, { data: targetYData }, { data: targetZData }]
+                });
+            }
+            
+            if (targetVelocityChart) {
+                targetVelocityChart.setOption({
+                    xAxis: { data: timeData },
+                    series: [{ data: targetVXData }, { data: targetVYData }, { data: targetVZData }]
+                });
+            }
+            
+            if (targetAngleChart) {
+                targetAngleChart.setOption({
+                    xAxis: { data: timeData },
+                    series: [{ data: targetAData }, { data: targetWData }]
+                });
+            }
+            
+            if (targetSizeChart) {
+                targetSizeChart.setOption({
+                    xAxis: { data: timeData },
+                    series: [{ data: targetRData }, { data: targetLData }, { data: targetHData }]
+                });
+            }
+            
+            if (residualChart) {
+                residualChart.setOption({
+                    xAxis: { data: timeData },
+                    series: [
+                        { data: residualYawData },
+                        { data: residualPitchData },
+                        { data: residualDistanceData },
+                        { data: residualAngleData }
+                    ]
+                });
+            }
+            
+            if (nisNeesChart) {
+                nisNeesChart.setOption({
+                    xAxis: { data: timeData },
+                    series: [{ data: nisData }, { data: neesData }]
+                });
+            }
+            
+            if (frameDelayChart) {
+                frameDelayChart.setOption({
+                    xAxis: { data: timeData },
+                    series: [{ data: frameDelayData }]
+                });
+            }
+            
+            document.getElementById('armorNum').textContent = data.armor_num || 0;
+            document.getElementById('frameDelay').textContent = (data.frame_delay_ms || 0).toFixed(2) + ' ms';
+            document.getElementById('targetId').textContent = data.last_id !== undefined && data.last_id >= 0 ? data.last_id : '-';
+            document.getElementById('shootStatus').textContent = data.shoot ? '是' : '否';
+        }
+        
+        function resetZoom() {
+            const charts = [
+                armorPositionChart, armorYawChart, gimbalAngleChart, commandAngleChart,
+                targetPositionChart, targetVelocityChart, targetAngleChart, targetSizeChart,
+                residualChart, nisNeesChart, frameDelayChart
+            ];
+            
+            charts.forEach(chart => {
+                if (chart) {
+                    chart.dispatchAction({
+                        type: 'dataZoom',
+                        start: 0,
+                        end: 100
+                    });
+                }
+            });
+        }
+        
+        function toggleAutoScroll() {
+            autoScroll = !autoScroll;
+            const btn = document.getElementById('autoScrollBtn');
+            btn.classList.toggle('active', autoScroll);
+            btn.textContent = autoScroll ? '📜 自动滚动' : '📜 停止滚动';
+        }
+        
+        function clearData() {
+            timeData.length = 0;
+            armorXData.length = 0;
+            armorYData.length = 0;
+            armorYawData.length = 0;
+            armorYawRawData.length = 0;
+            gimbalYawData.length = 0;
+            gimbalPitchData.length = 0;
+            cmdYawData.length = 0;
+            cmdPitchData.length = 0;
+            targetXData.length = 0;
+            targetYData.length = 0;
+            targetZData.length = 0;
+            targetVXData.length = 0;
+            targetVYData.length = 0;
+            targetVZData.length = 0;
+            targetAData.length = 0;
+            targetWData.length = 0;
+            targetRData.length = 0;
+            targetLData.length = 0;
+            targetHData.length = 0;
+            residualYawData.length = 0;
+            residualPitchData.length = 0;
+            residualDistanceData.length = 0;
+            residualAngleData.length = 0;
+            nisData.length = 0;
+            neesData.length = 0;
+            frameDelayData.length = 0;
+            
+            const charts = [
+                armorPositionChart, armorYawChart, gimbalAngleChart, commandAngleChart,
+                targetPositionChart, targetVelocityChart, targetAngleChart, targetSizeChart,
+                residualChart, nisNeesChart, frameDelayChart
+            ];
+            
+            charts.forEach(chart => {
+                if (chart) {
+                    chart.setOption({
+                        xAxis: { data: timeData }
+                    });
+                }
+            });
+        }
+        
+        function updateDataPoints() {
+            MAX_DATA_POINTS = parseInt(document.getElementById('dataPoints').value);
+        }
+        
+        function connect() {
+            console.log('尝试连接WebSocket...');
+            
+            try {
+                ws = new WebSocket(WS_URL);
+                
+                ws.onopen = () => {
+                    console.log('WebSocket连接成功');
+                    document.getElementById('status').textContent = '已连接';
+                    document.getElementById('status').className = 'status connected';
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        
+                        if (message.type === 'video') {
+                            const img = document.getElementById('videoFeed');
+                            img.src = 'data:image/jpeg;base64,' + message.data;
+                        } else if (message.type === 'data') {
+                            updateCharts(message.data);
+                        }
+                    } catch (error) {
+                        console.error('解析消息失败:', error);
+                    }
+                };
+                
+                ws.onclose = () => {
+                    console.log('WebSocket断开连接');
+                    document.getElementById('status').textContent = '未连接';
+                    document.getElementById('status').className = 'status disconnected';
+                    
+                    setTimeout(connect, 3000);
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('WebSocket错误:', error);
+                };
+            } catch (error) {
+                console.error('创建WebSocket失败:', error);
+            }
+        }
+        
+        window.addEventListener('load', () => {
+            console.log('窗口加载完成');
+            initCharts();
+            connect();
+        });
+        
+        window.addEventListener('resize', () => {
+            const charts = [
+                armorPositionChart, armorYawChart, gimbalAngleChart, commandAngleChart,
+                targetPositionChart, targetVelocityChart, targetAngleChart, targetSizeChart,
+                residualChart, nisNeesChart, frameDelayChart
+            ];
+            
+            charts.forEach(chart => {
+                if (chart) {
+                    chart.resize();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

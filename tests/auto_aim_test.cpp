@@ -14,13 +14,18 @@
 #include "tools/logger.hpp"
 #include "tools/math_tools.hpp"
 #include "tools/plotter.hpp"        // 数据可视化工具
+#include "tools/websocket_server.hpp" // WebSocket服务器：用于网页端可视化
+#include "io/mock_camera.hpp"        // 虚拟相机模拟
+#include "io/mock_cboard.hpp"        // 虚拟CAN板模拟
 
 const std::string keys =
   "{help h usage ? |                   | 输出命令行参数说明 }"
   "{config-path c  | configs/standard3.yaml | yaml配置文件的路径}"
   "{start-index s  | 0                | 视频起始帧下标    }"
   "{end-index e    | 280               | 视频结束帧下标    }"
-  "{@input-path    | assets/demo/3m | avi和txt文件的路径}";
+  "{@input-path    | assets/demo/3m | avi和txt文件的路径}"
+  "{enable-gui g   | false             | 是否启用GUI显示    }"
+  "{mock-mode m    | false             | 是否启用模拟设备模式}";
 
 int main(int argc, char * argv[])
 {
@@ -36,15 +41,13 @@ int main(int argc, char * argv[])
   auto config_path = cli.get<std::string>("config-path");
   auto start_index = cli.get<int>("start-index");
   auto end_index = cli.get<int>("end-index");
+  auto enable_gui = cli.get<bool>("enable-gui");  
+  auto mock_mode = cli.get<bool>("mock-mode");  // 新增：模拟模式标志
 
   tools::Plotter plotter;       // 初始化绘图工具，用于记录算法数据（如目标位置、指令）
   tools::Exiter exiter;         // 初始化退出检测器，监听程序终止信号（如Ctrl+C）
-
-  // 拼接视频和数据文件路径
-  auto video_path = fmt::format("{}.avi", input_path);  // 离线视频路径（.avi）
-  auto text_path = fmt::format("{}.txt", input_path);   // 离线数据路径（.txt，含IMU等信息）
-  cv::VideoCapture video(video_path);  // 打开视频文件
-  std::ifstream text(text_path);       // 打开数据文件
+  tools::WebSocketServer ws_server(8080);  // WebSocket服务器：用于网页端可视化（端口8080）
+  ws_server.start();            // 启动WebSocket服务器
 
   auto_aim::Detector yolo(config_path, false);          // 初始化YOLO检测器（加载模型和配置）
   auto_aim::Solver solver(config_path);      // 初始化解算器（加载相机参数、坐标转换配置）
@@ -63,14 +66,46 @@ int main(int argc, char * argv[])
   double frame_delay_ms = 0.0;  // 每帧总耗时（毫秒）
   double fps = 0.0;             // 实时帧率
 
-  // 定位视频到起始帧
-  video.set(cv::CAP_PROP_POS_FRAMES, start_index);
-  // 跳过数据文件中起始帧之前的内容
-  for (int i = 0; i < start_index; i++) 
-  {
-    double t, w, x, y, z;
-    text >> t >> w >> x >> y >> z;  // 读取但不处理，仅移动文件指针
+  // =========================== 新增：模拟设备初始化 ===========================
+  io::MockCamera* mock_camera = nullptr;
+  io::MockCBoard* mock_cboard = nullptr;
+  cv::VideoCapture video;
+  std::ifstream text;
+  
+  if (mock_mode) {
+    tools::logger()->info("=== 启用模拟设备模式 ===");
+    mock_camera = new io::MockCamera(config_path);
+    mock_cboard = new io::MockCBoard(config_path);
+    tools::logger()->info("模拟设备初始化完成");
+  } else {
+    tools::logger()->info("=== 启用离线视频模式 ===");
+    // 拼接视频和数据文件路径
+    auto video_path = fmt::format("{}.avi", input_path);  // 离线视频路径（.avi）
+    auto text_path = fmt::format("{}.txt", input_path);   // 离线数据路径（.txt，含IMU等信息）
+    video.open(video_path);  // 打开视频文件
+    text.open(text_path);       // 打开数据文件
+    
+    if (!video.isOpened()) {
+      tools::logger()->error("无法打开视频文件: {}", video_path);
+      return -1;
+    }
+    if (!text.is_open()) {
+      tools::logger()->error("无法打开数据文件: {}", text_path);
+      return -1;
+    }
+    
+    // 定位视频到起始帧
+    video.set(cv::CAP_PROP_POS_FRAMES, start_index);
+    // 跳过数据文件中起始帧之前的内容
+    for (int i = 0; i < start_index; i++) 
+    {
+      double t, w, x, y, z;
+      text >> t >> w >> x >> y >> z;  // 读取但不处理，仅移动文件指针
+    }
+    
+    tools::logger()->info("离线视频模式初始化完成");
   }
+  // =======================================================================
 
   // 循环处理每一帧，直到退出信号或视频结束
   for (int frame_count = start_index; !exiter.exit(); frame_count++) 
@@ -80,19 +115,31 @@ int main(int argc, char * argv[])
 
     if (end_index > 0 && frame_count > end_index) break;  // 到达结束帧则退出
 
-    // 读取当前帧图像和数据
-    video.read(img);  // 从视频中读取一帧图像
-    if (img.empty()) break;  // 视频读取完毕则退出
+    // =========================== 新增：根据模式读取数据 ===========================
+    std::chrono::steady_clock::time_point timestamp;
+    Eigen::Quaterniond q;
+    
+    if (mock_mode) {
+      // 模拟模式：从虚拟设备读取
+      mock_camera->read(img, timestamp);
+      q = mock_cboard->imu_at(timestamp);
+    } else {
+      // 离线视频模式：从文件读取
+      video.read(img);  // 从视频中读取一帧图像
+      if (img.empty()) break;  // 视频读取完毕则退出
 
-    // 从数据文件中读取当前帧的时间和IMU姿态（w,x,y,z为四元数）
-    double t, w, x, y, z;
-    text >> t >> w >> x >> y >> z;
-    // 生成模拟的绝对时间戳（基准时间+t）
-    auto timestamp = t0 + std::chrono::microseconds(int(t * 1e6));
+      // 从数据文件中读取当前帧的时间和IMU姿态（w,x,y,z为四元数）
+      double t, w, x, y, z;
+      text >> t >> w >> x >> y >> z;
+      // 生成模拟的绝对时间戳（基准时间+t）
+      timestamp = t0 + std::chrono::microseconds(int(t * 1e6));
+      q = Eigen::Quaterniond(w, x, y, z);
+    }
+    // =======================================================================
 
     /// 自瞄核心逻辑
     // 设置解算器的云台到世界坐标系的旋转矩阵（从IMU四元数转换）
-    solver.set_R_gimbal2world({w, x, y, z});
+    solver.set_R_gimbal2world(q);
 
     // 1. YOLO检测装甲板
     auto yolo_start = std::chrono::steady_clock::now();  // 记录检测开始时间
@@ -104,7 +151,8 @@ int main(int argc, char * argv[])
 
     // 3. 计算瞄准指令（根据目标预测位置和弹道）
     auto aimer_start = std::chrono::steady_clock::now();  // 记录瞄准开始时间
-    auto command = aimer.aim(targets, timestamp, 27, false);  // 输入目标、时间戳、弹速，输出指令
+    double bullet_speed = mock_mode ? mock_cboard->bullet_speed : 27.0;  // 根据模式获取弹速
+    auto command = aimer.aim(targets, timestamp, bullet_speed, false);  // 输入目标、时间戳、弹速，输出指令
 
     // 判断是否满足发射条件（目标存在+瞄准稳定）
     if(
@@ -176,6 +224,14 @@ int main(int argc, char * argv[])
       data["armor_yaw_raw"] = armor.yaw_raw * 57.3;  // 原始航向角
       data["armor_center_x"] = armor.center_norm.x;  // 归一化中心x
       data["armor_center_y"] = armor.center_norm.y;  // 归一化中心y
+    } else {
+      // 没有检测到装甲板时，发送默认值
+      data["armor_x"] = 0.0;
+      data["armor_y"] = 0.0;
+      data["armor_yaw"] = 0.0;
+      data["armor_yaw_raw"] = 0.0;
+      data["armor_center_x"] = 0.0;
+      data["armor_center_y"] = 0.0;
     }
 
     // -------------------------- 新增：记录总耗时和FPS到日志数据 --------------------------
@@ -183,7 +239,6 @@ int main(int argc, char * argv[])
     data["fps"] = fps;
 
     // 记录云台和指令的yaw角
-    Eigen::Quaternion q{w, x, y, z};
     auto yaw = tools::eulers(q, 2, 1, 0)[0];  // 云台yaw角（弧度）
     auto pitch = tools::eulers(q, 2, 1, 0)[1];  // 云台yaw角（弧度）
     data["gimbal_yaw"] = yaw * 57.3;  // 转换为度
@@ -202,7 +257,7 @@ int main(int argc, char * argv[])
       if (last_t == -1) 
       {
         last_target = target;
-        last_t = t;
+        last_t = std::chrono::duration<double>(timestamp - t0).count();
         continue;
       }
 
@@ -245,18 +300,63 @@ int main(int argc, char * argv[])
       data["nis_fail"] = target.ekf().data.at("nis_fail");  // NIS检验失败次数
       data["nees_fail"] = target.ekf().data.at("nees_fail");  // NEES检验失败次数
       data["recent_nis_failures"] = target.ekf().data.at("recent_nis_failures");  // 近期NIS失败次数
+    } else {
+      // 没有检测到目标时，发送默认值
+      data["x"] = 0.0;
+      data["vx"] = 0.0;
+      data["y"] = 0.0;
+      data["vy"] = 0.0;
+      data["z"] = 0.0;
+      data["vz"] = 0.0;
+      data["a"] = 0.0;
+      data["w"] = 0.0;
+      data["r"] = 0.0;
+      data["l"] = 0.0;
+      data["h"] = 0.0;
+      data["last_id"] = -1;
+      data["residual_yaw"] = 0.0;
+      data["residual_pitch"] = 0.0;
+      data["residual_distance"] = 0.0;
+      data["residual_angle"] = 0.0;
+      data["nis"] = 0.0;
+      data["nees"] = 0.0;
+      data["nis_fail"] = 0;
+      data["nees_fail"] = 0;
+      data["recent_nis_failures"] = 0;
     }
 
     // 将当前帧数据交给plotter记录（后续可生成曲线）
     plotter.plot(data);
 
-    // 缩小图像尺寸（便于显示）并展示
-    cv::resize(img, img, {}, 0.5, 0.5);
-    cv::imshow("reprojection", img);
-    // 等待30ms，若按下'q'则退出
-    auto key = cv::waitKey(1);
-    if (key == 'q') break;
+    if (enable_gui)
+    {
+      // 缩小图像尺寸（便于显示）并展示
+      cv::resize(img, img, {}, 0.5, 0.5);
+      cv::imshow("reprojection", img);
+      // 等待30ms，若按下'q'则退出
+      auto key = cv::waitKey(1);
+      if (key == 'q') break;
+    }
+    
+    // ====================== 新增：WebSocket广播 ======================
+    std::vector<uchar> jpeg_buffer;
+    std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, 50};
+    cv::imencode(".jpg", img, jpeg_buffer, params);
+    std::string jpeg_data(jpeg_buffer.begin(), jpeg_buffer.end());
+    ws_server.broadcastVideo(jpeg_data);
+    
+    // ====================== 新增：WebSocket广播完整数据 ======================
+    ws_server.broadcastData(data);
+    // ==================================================================== 
   }
+
+  // =========================== 新增：清理模拟设备资源 ===========================
+  if (mock_mode) {
+    delete mock_camera;
+    delete mock_cboard;
+    tools::logger()->info("模拟设备资源已释放");
+  }
+  // =======================================================================
 
   return 0;
 }

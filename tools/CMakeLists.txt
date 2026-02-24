@@ -12,4 +12,7 @@ add_library(tools OBJECT
     logger.cpp
     pid.cpp
     crc.cpp
+    websocket_server.cpp
 )
+
+target_link_libraries(tools PRIVATE ssl crypto)
