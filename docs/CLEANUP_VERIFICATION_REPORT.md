@@ -1,8 +1,8 @@
-# SP Vision 项目清理验证报告
+# pl_vision网页调试器 项目清理验证报告
 
 **报告生成时间：** 2026-02-25  
 **验证人员：** z1396  
-**项目路径：** `/home/pldx/Desktop/sp_vision_25-main`
+**项目路径：** `/home/pldx/Desktop/pl_vision`
 
 ---
 
@@ -39,12 +39,12 @@
 #### 验证方法
 ```bash
 # 检查web目录下的HTML文件
-find /home/pldx/Desktop/sp_vision_25-main/web -name "*.html" -type f
+find /home/pldx/Desktop/pl_vision/web -name "*.html" -type f
 ```
 
 #### 验证结果
 ```
-/home/pldx/Desktop/sp_vision_25-main/web/index_working.html
+/home/pldx/Desktop/pl_vision/web/index_working.html
 ```
 
 **结论：** ✅ 所有指定的临时文件和测试文件已成功删除，仅保留最终工作版本 `index_working.html`
@@ -66,7 +66,7 @@ find /home/pldx/Desktop/sp_vision_25-main/web -name "*.html" -type f
 
 **检查命令：**
 ```bash
-cd /home/pldx/Desktop/sp_vision_25-main && git status
+cd /home/pldx/Desktop/pl_vision && git status
 ```
 
 **检查结果：**
@@ -108,12 +108,12 @@ cd /home/pldx/Desktop/sp_vision_25-main && git status
 
 **检查命令：**
 ```bash
-ls -lh /home/pldx/Desktop/sp_vision_25-main/build/auto_aim_test
+ls -lh /home/pldx/Desktop/pl_vision/build/auto_aim_test
 ```
 
 **检查结果：**
 ```
--rwxrwxr-x 1 pldx pldx 73M  2月 25 05:01 /home/pldx/Desktop/sp_vision_25-main/build/auto_aim_test
+-rwxrwxr-x 1 pldx pldx 73M  2月 25 05:01 /home/pldx/Desktop/pl_vision/build/auto_aim_test
 ```
 
 **文件信息：**
@@ -174,13 +174,13 @@ lsof -i :8080
 
 **视频文件检查：**
 ```bash
-ls -lh /home/pldx/Desktop/sp_vision_25-main/assets/demo/3m.*
+ls -lh /home/pldx/Desktop/pl_vision/assets/demo/3m.*
 ```
 
 **检查结果：**
 ```
-/home/pldx/Desktop/sp_vision_25-main/assets/demo/3m.avi
-/home/pldx/Desktop/sp_vision_25-main/assets/demo/3m.txt
+/home/pldx/Desktop/pl_vision/assets/demo/3m.avi
+/home/pldx/Desktop/pl_vision/assets/demo/3m.txt
 ```
 
 **状态：** ✅ 视频文件和配置文件完整
@@ -189,13 +189,13 @@ ls -lh /home/pldx/Desktop/sp_vision_25-main/assets/demo/3m.*
 
 **HTTP服务器启动命令：**
 ```bash
-cd /home/pldx/Desktop/sp_vision_25-main/web
+cd /home/pldx/Desktop/pl_vision/web
 python3 -m http.server 8000
 ```
 
 **auto_aim_test启动命令：**
 ```bash
-cd /home/pldx/Desktop/sp_vision_25-main
+cd /home/pldx/Desktop/pl_vision
 ./build/auto_aim_test assets/demo/3m
 ```
 
@@ -401,26 +401,26 @@ cd /home/pldx/Desktop/sp_vision_25-main
 
 ```bash
 # 1. 检查HTML文件
-find /home/pldx/Desktop/sp_vision_25-main/web -name "*.html" -type f
+find /home/pldx/Desktop/pl_vision/web -name "*.html" -type f
 
 # 2. 检查可执行文件
-ls -lh /home/pldx/Desktop/sp_vision_25-main/build/auto_aim_test
+ls -lh /home/pldx/Desktop/pl_vision/build/auto_aim_test
 
 # 3. 检查端口占用
 lsof -i :8000
 lsof -i :8080
 
 # 4. 检查视频文件
-ls -lh /home/pldx/Desktop/sp_vision_25-main/assets/demo/3m.*
+ls -lh /home/pldx/Desktop/pl_vision/assets/demo/3m.*
 
 # 5. 检查Git状态
-cd /home/pldx/Desktop/sp_vision_25-main && git status
+cd /home/pldx/Desktop/pl_vision && git status
 ```
 
 ### B. 项目文件结构
 
 ```
-sp_vision_25-main/
+pl_vision/
 ├── assets/
 │   └── demo/
 │       ├── 3m.avi          # 视频文件
@@ -444,7 +444,7 @@ sp_vision_25-main/
 
 **维护者：** z1396  
 **报告生成时间：** 2026-02-25  
-**项目路径：** `/home/pldx/Desktop/sp_vision_25-main`
+**项目路径：** `/home/pldx/Desktop/pl_vision`
 
 ---
 

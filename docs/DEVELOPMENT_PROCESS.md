@@ -2,9 +2,9 @@
 
 ## 项目概述
 
-本项目为SP Vision计算机视觉系统，实现了基于Web的实时波形可视化功能，用于显示自动瞄准系统的调试数据。
+本项目为pl_vision网页调试器计算机视觉系统，实现了基于Web的实时波形可视化功能，用于显示自动瞄准系统的调试数据。
 
-**项目路径：** `/home/pldx/Desktop/sp_vision_25-main`
+**项目路径：** `/home/pldx/Desktop/pl_vision`
 
 **核心功能：**
 - 实时视频流传输
@@ -575,11 +575,11 @@ if (armorPositionChart) {
 ### 启动服务
 ```bash
 # 启动HTTP服务器
-cd /home/pldx/Desktop/sp_vision_25-main/web
+cd /home/pldx/Desktop/pl_vision/web
 python3 -m http.server 8000
 
 # 启动auto_aim_test
-cd /home/pldx/Desktop/sp_vision_25-main
+cd /home/pldx/Desktop/pl_vision
 ./build/auto_aim_test assets/demo/3m
 ```
 
@@ -598,7 +598,7 @@ tail -f /path/to/logfile
 
 ### 构建命令
 ```bash
-cd /home/pldx/Desktop/sp_vision_25-main
+cd /home/pldx/Desktop/pl_vision
 mkdir -p build
 cd build
 cmake ..

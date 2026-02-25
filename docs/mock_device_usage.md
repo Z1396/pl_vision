@@ -35,7 +35,7 @@
 使用 `-m` 或 `--mock-mode` 参数启用模拟模式：
 
 ```bash
-cd /home/pldx/Desktop/sp_vision_25-main/build
+cd /home/pldx/Desktop/pl_vision/build
 ./auto_aim_test -m -g
 ```
 
@@ -108,7 +108,7 @@ cd /home/pldx/Desktop/sp_vision_25-main/build
 ### 1. 编译验证
 
 ```bash
-cd /home/pldx/Desktop/sp_vision_25-main/build
+cd /home/pldx/Desktop/pl_vision/build
 make auto_aim_test
 ```
 

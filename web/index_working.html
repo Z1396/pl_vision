@@ -3,130 +3,315 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SP Vision - 波形可视化</title>
+    <title>破浪笃行自瞄网页调试器</title>
     <script src="echarts.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #1e1e1e;
-            color: #e0e0e0;
-            padding: 20px;
-            margin: 0;
+        /* Google 风格基础样式 */
+        :root {
+            --google-blue: #4285F4;
+            --google-red: #EA4335;
+            --google-yellow: #FBBC05;
+            --google-green: #34A853;
+            --google-gray-50: #F8F9FA;
+            --google-gray-100: #F1F3F4;
+            --google-gray-200: #E8EAED;
+            --google-gray-300: #DADCE0;
+            --google-gray-400: #BDC1C6;
+            --google-gray-500: #9AA0A6;
+            --google-gray-600: #80868B;
+            --google-gray-700: #5F6368;
+            --google-gray-800: #3C4043;
+            --google-gray-900: #202124;
+            --google-white: #FFFFFF;
+            --google-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
+            --google-shadow-hover: 0 1px 3px 0 rgba(60, 64, 67, 0.4), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+            --google-border-radius: 8px;
+            --google-border-radius-sm: 4px;
+            --google-transition: all 0.2s ease-in-out;
         }
+        
+        body {
+            font-family: 'Google Sans', Roboto, Arial, sans-serif;
+            background: var(--google-gray-50);
+            color: var(--google-gray-900);
+            padding: 24px;
+            margin: 0;
+            line-height: 1.5;
+        }
+        
         .header {
-            background: #2d2d2d;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
+            background: var(--google-white);
+            padding: 20px 24px;
+            border-radius: var(--google-border-radius);
+            margin-bottom: 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: var(--google-shadow);
+            transition: var(--google-transition);
         }
+        
+        .header:hover {
+            box-shadow: var(--google-shadow-hover);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 500;
+            margin: 0;
+            color: var(--google-gray-900);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
         .status {
             font-size: 14px;
-        }
-        .connected {
-            color: #4caf50;
-        }
-        .disconnected {
-            color: #f44336;
-        }
-        .toolbar {
-            background: #2d2d2d;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .toolbar button {
-            background: #3d3d3d;
-            color: #e0e0e0;
-            border: 1px solid #4fc3f7;
+            font-weight: 500;
             padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
+            border-radius: var(--google-border-radius-sm);
+            background: var(--google-gray-100);
         }
+        
+        .connected {
+            color: var(--google-green);
+            background: rgba(52, 168, 83, 0.1);
+            border: 1px solid rgba(52, 168, 83, 0.2);
+        }
+        
+        .disconnected {
+            color: var(--google-red);
+            background: rgba(234, 67, 53, 0.1);
+            border: 1px solid rgba(234, 67, 53, 0.2);
+        }
+        
+        .toolbar {
+            background: var(--google-white);
+            padding: 16px 24px;
+            border-radius: var(--google-border-radius);
+            margin-bottom: 24px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            box-shadow: var(--google-shadow);
+            transition: var(--google-transition);
+        }
+        
+        .toolbar:hover {
+            box-shadow: var(--google-shadow-hover);
+        }
+        
+        .toolbar button {
+            background: var(--google-gray-100);
+            color: var(--google-gray-700);
+            border: 1px solid var(--google-gray-300);
+            padding: 10px 20px;
+            border-radius: var(--google-border-radius-sm);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: var(--google-transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
         .toolbar button:hover {
-            background: #4fc3f7;
-            color: #1e1e1e;
+            background: var(--google-gray-200);
+            border-color: var(--google-gray-400);
         }
+        
         .toolbar button.active {
-            background: #4fc3f7;
-            color: #1e1e1e;
+            background: var(--google-blue);
+            color: var(--google-white);
+            border-color: var(--google-blue);
         }
+        
+        .toolbar button.active:hover {
+            background: #3367D6;
+            border-color: #3367D6;
+        }
+        
         .toolbar select {
-            background: #3d3d3d;
-            color: #e0e0e0;
-            border: 1px solid #4fc3f7;
-            padding: 8px 12px;
-            border-radius: 4px;
+            background: var(--google-white);
+            color: var(--google-gray-700);
+            border: 1px solid var(--google-gray-300);
+            padding: 10px 16px;
+            border-radius: var(--google-border-radius-sm);
             cursor: pointer;
-            font-size: 13px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: var(--google-transition);
+            min-width: 120px;
         }
+        
+        .toolbar select:hover {
+            border-color: var(--google-gray-400);
+            box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.1);
+        }
+        
         .video-section {
-            background: #2d2d2d;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
+            background: var(--google-white);
+            padding: 20px;
+            border-radius: var(--google-border-radius);
+            margin-bottom: 24px;
             height: 35vh;
             overflow: hidden;
+            box-shadow: var(--google-shadow);
+            transition: var(--google-transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+        
+        .video-section:hover {
+            box-shadow: var(--google-shadow-hover);
+        }
+        
         .video-section img {
             width: 100%;
             height: 100%;
             object-fit: contain;
+            border-radius: var(--google-border-radius-sm);
         }
+        
         .info-bar {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 10px;
-            margin-bottom: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
         }
+        
         .info-item {
-            background: #2d2d2d;
-            padding: 10px;
-            border-radius: 6px;
-            border-left: 3px solid #4fc3f7;
+            background: var(--google-white);
+            padding: 16px 20px;
+            border-radius: var(--google-border-radius);
+            border: 1px solid var(--google-gray-200);
+            transition: var(--google-transition);
+            box-shadow: var(--google-shadow);
         }
+        
+        .info-item:hover {
+            box-shadow: var(--google-shadow-hover);
+            transform: translateY(-2px);
+        }
+        
         .info-label {
-            font-size: 11px;
-            color: #888;
-            margin-bottom: 5px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--google-gray-600);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
+        
         .info-value {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 600;
-            color: #e0e0e0;
+            color: var(--google-gray-900);
         }
+        
         .charts-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 24px;
         }
+        
         .chart-container {
-            background: #2d2d2d;
-            padding: 15px;
-            border-radius: 8px;
-            min-height: 200px;
+            background: var(--google-white);
+            padding: 20px 24px;
+            border-radius: var(--google-border-radius);
+            min-height: 220px;
+            box-shadow: var(--google-shadow);
+            transition: var(--google-transition);
         }
+        
+        .chart-container:hover {
+            box-shadow: var(--google-shadow-hover);
+        }
+        
         .chart-title {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 10px;
-            color: #4fc3f7;
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            color: var(--google-gray-700);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
+        
         .chart {
             width: 100%;
-            height: 160px;
+            height: 180px;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+            
+            .header {
+                padding: 16px 20px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            
+            .toolbar {
+                padding: 12px 16px;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            
+            .toolbar button {
+                justify-content: center;
+            }
+            
+            .info-bar {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+            
+            .charts-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            
+            .chart-container {
+                padding: 16px 20px;
+            }
+        }
+        
+        /* 加载动画 */
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+        
+        .loading {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        /* 图标样式 */
+        .icon {
+            font-size: 16px;
+            display: inline-block;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>📊 SP Vision 波形可视化</h1>
+        <h1>📊 破浪笃行自瞄网页调试器</h1>
         <div id="status" class="status disconnected">未连接</div>
     </div>
     
@@ -274,35 +459,41 @@
                 type: 'category',
                 data: timeData,
                 axisLabel: {
-                    color: '#888',
-                    fontSize: 10,
-                    rotate: 45
+                    color: '#5F6368',
+                    fontSize: 11,
+                    rotate: 45,
+                    fontFamily: 'Roboto, Arial, sans-serif'
                 },
                 axisLine: {
                     lineStyle: {
-                        color: '#3d3d3d'
+                        color: '#DADCE0'
                     }
                 },
                 axisTick: {
                     lineStyle: {
-                        color: '#3d3d3d'
+                        color: '#DADCE0'
                     }
+                },
+                splitLine: {
+                    show: false
                 }
             },
             yAxis: {
                 type: 'value',
                 axisLabel: {
-                    color: '#888',
-                    fontSize: 10
+                    color: '#5F6368',
+                    fontSize: 11,
+                    fontFamily: 'Roboto, Arial, sans-serif'
                 },
                 axisLine: {
-                    lineStyle: {
-                        color: '#3d3d3d'
-                    }
+                    show: false
+                },
+                axisTick: {
+                    show: false
                 },
                 splitLine: {
                     lineStyle: {
-                        color: '#3d3d3d',
+                        color: '#E8EAED',
                         type: 'dashed'
                     }
                 }
@@ -312,14 +503,29 @@
                 axisPointer: {
                     type: 'cross',
                     label: {
-                        backgroundColor: '#2d2d2d'
+                        backgroundColor: '#FFFFFF',
+                        color: '#202124',
+                        borderColor: '#DADCE0',
+                        borderWidth: 1,
+                        padding: [8, 12],
+                        fontSize: 12,
+                        fontFamily: 'Roboto, Arial, sans-serif'
                     }
                 },
-                backgroundColor: 'rgba(45, 45, 45, 0.95)',
-                borderColor: '#4fc3f7',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                borderColor: '#DADCE0',
+                borderWidth: 1,
+                borderRadius: 8,
+                padding: 12,
                 textStyle: {
-                    color: '#e0e0e0'
-                }
+                    color: '#202124',
+                    fontSize: 12,
+                    fontFamily: 'Roboto, Arial, sans-serif'
+                },
+                shadowBlur: 10,
+                shadowColor: 'rgba(60, 64, 67, 0.15)',
+                shadowOffsetX: 2,
+                shadowOffsetY: 2
             },
             dataZoom: [
                 {
@@ -334,24 +540,37 @@
                     type: 'slider',
                     start: 0,
                     end: 100,
-                    height: 20,
+                    height: 24,
                     bottom: 5,
-                    borderColor: '#3d3d3d',
-                    fillerColor: 'rgba(79, 195, 247, 0.2)',
+                    borderColor: '#DADCE0',
+                    backgroundColor: '#F1F3F4',
+                    fillerColor: 'rgba(66, 133, 244, 0.2)',
                     handleStyle: {
-                        color: '#4fc3f7'
+                        color: '#4285F4',
+                        borderColor: '#4285F4',
+                        borderWidth: 1,
+                        shadowBlur: 2,
+                        shadowColor: 'rgba(66, 133, 244, 0.5)',
+                        shadowOffsetX: 1,
+                        shadowOffsetY: 1
                     },
                     textStyle: {
-                        color: '#888'
+                        color: '#5F6368',
+                        fontSize: 11,
+                        fontFamily: 'Roboto, Arial, sans-serif'
                     }
                 }
             ],
             legend: {
                 textStyle: {
-                    color: '#e0e0e0',
-                    fontSize: 11
+                    color: '#5F6368',
+                    fontSize: 12,
+                    fontFamily: 'Roboto, Arial, sans-serif'
                 },
-                top: 0
+                top: 0,
+                itemWidth: 16,
+                itemHeight: 10,
+                itemGap: 16
             }
         };
         
@@ -386,8 +605,8 @@
                     ...commonOption,
                     legend: { data: ['X', 'Y'] },
                     series: [
-                        { name: 'X', type: 'line', data: armorXData, itemStyle: { color: '#2196F3' }, ...lineStyle },
-                        { name: 'Y', type: 'line', data: armorYData, itemStyle: { color: '#4CAF50' }, ...lineStyle }
+                        { name: 'X', type: 'line', data: armorXData, itemStyle: { color: '#4285F4' }, ...lineStyle },
+                        { name: 'Y', type: 'line', data: armorYData, itemStyle: { color: '#34A853' }, ...lineStyle }
                     ]
                 });
                 
@@ -395,8 +614,8 @@
                     ...commonOption,
                     legend: { data: ['航向角', '原始航向角'] },
                     series: [
-                        { name: '航向角', type: 'line', data: armorYawData, itemStyle: { color: '#FF9800' }, ...lineStyle },
-                        { name: '原始航向角', type: 'line', data: armorYawRawData, itemStyle: { color: '#FF5722' }, ...lineStyle }
+                        { name: '航向角', type: 'line', data: armorYawData, itemStyle: { color: '#FBBC05' }, ...lineStyle },
+                        { name: '原始航向角', type: 'line', data: armorYawRawData, itemStyle: { color: '#EA4335' }, ...lineStyle }
                     ]
                 });
                 
@@ -404,8 +623,8 @@
                     ...commonOption,
                     legend: { data: ['云台Yaw', '云台Pitch'] },
                     series: [
-                        { name: '云台Yaw', type: 'line', data: gimbalYawData, itemStyle: { color: '#9C27B0' }, ...lineStyle },
-                        { name: '云台Pitch', type: 'line', data: gimbalPitchData, itemStyle: { color: '#E91E63' }, ...lineStyle }
+                        { name: '云台Yaw', type: 'line', data: gimbalYawData, itemStyle: { color: '#4285F4' }, ...lineStyle },
+                        { name: '云台Pitch', type: 'line', data: gimbalPitchData, itemStyle: { color: '#EA4335' }, ...lineStyle }
                     ]
                 });
                 
@@ -413,8 +632,8 @@
                     ...commonOption,
                     legend: { data: ['指令Yaw', '指令Pitch'] },
                     series: [
-                        { name: '指令Yaw', type: 'line', data: cmdYawData, itemStyle: { color: '#00BCD4' }, ...lineStyle },
-                        { name: '指令Pitch', type: 'line', data: cmdPitchData, itemStyle: { color: '#009688' }, ...lineStyle }
+                        { name: '指令Yaw', type: 'line', data: cmdYawData, itemStyle: { color: '#34A853' }, ...lineStyle },
+                        { name: '指令Pitch', type: 'line', data: cmdPitchData, itemStyle: { color: '#FBBC05' }, ...lineStyle }
                     ]
                 });
                 
@@ -422,9 +641,9 @@
                     ...commonOption,
                     legend: { data: ['X', 'Y', 'Z'] },
                     series: [
-                        { name: 'X', type: 'line', data: targetXData, itemStyle: { color: '#2196F3' }, ...lineStyle },
-                        { name: 'Y', type: 'line', data: targetYData, itemStyle: { color: '#4CAF50' }, ...lineStyle },
-                        { name: 'Z', type: 'line', data: targetZData, itemStyle: { color: '#FF9800' }, ...lineStyle }
+                        { name: 'X', type: 'line', data: targetXData, itemStyle: { color: '#4285F4' }, ...lineStyle },
+                        { name: 'Y', type: 'line', data: targetYData, itemStyle: { color: '#34A853' }, ...lineStyle },
+                        { name: 'Z', type: 'line', data: targetZData, itemStyle: { color: '#FBBC05' }, ...lineStyle }
                     ]
                 });
                 
@@ -432,9 +651,9 @@
                     ...commonOption,
                     legend: { data: ['VX', 'VY', 'VZ'] },
                     series: [
-                        { name: 'VX', type: 'line', data: targetVXData, itemStyle: { color: '#2196F3' }, ...lineStyle },
-                        { name: 'VY', type: 'line', data: targetVYData, itemStyle: { color: '#4CAF50' }, ...lineStyle },
-                        { name: 'VZ', type: 'line', data: targetVZData, itemStyle: { color: '#FF9800' }, ...lineStyle }
+                        { name: 'VX', type: 'line', data: targetVXData, itemStyle: { color: '#4285F4' }, ...lineStyle },
+                        { name: 'VY', type: 'line', data: targetVYData, itemStyle: { color: '#34A853' }, ...lineStyle },
+                        { name: 'VZ', type: 'line', data: targetVZData, itemStyle: { color: '#FBBC05' }, ...lineStyle }
                     ]
                 });
                 
@@ -442,8 +661,8 @@
                     ...commonOption,
                     legend: { data: ['角度', '旋转速度'] },
                     series: [
-                        { name: '角度', type: 'line', data: targetAData, itemStyle: { color: '#9C27B0' }, ...lineStyle },
-                        { name: '旋转速度', type: 'line', data: targetWData, itemStyle: { color: '#E91E63' }, ...lineStyle }
+                        { name: '角度', type: 'line', data: targetAData, itemStyle: { color: '#4285F4' }, ...lineStyle },
+                        { name: '旋转速度', type: 'line', data: targetWData, itemStyle: { color: '#EA4335' }, ...lineStyle }
                     ]
                 });
                 
@@ -451,9 +670,9 @@
                     ...commonOption,
                     legend: { data: ['半径', '长度', '高度'] },
                     series: [
-                        { name: '半径', type: 'line', data: targetRData, itemStyle: { color: '#2196F3' }, ...lineStyle },
-                        { name: '长度', type: 'line', data: targetLData, itemStyle: { color: '#4CAF50' }, ...lineStyle },
-                        { name: '高度', type: 'line', data: targetHData, itemStyle: { color: '#FF9800' }, ...lineStyle }
+                        { name: '半径', type: 'line', data: targetRData, itemStyle: { color: '#4285F4' }, ...lineStyle },
+                        { name: '长度', type: 'line', data: targetLData, itemStyle: { color: '#34A853' }, ...lineStyle },
+                        { name: '高度', type: 'line', data: targetHData, itemStyle: { color: '#FBBC05' }, ...lineStyle }
                     ]
                 });
                 
@@ -461,10 +680,10 @@
                     ...commonOption,
                     legend: { data: ['Yaw残差', 'Pitch残差', '距离残差', '角度残差'] },
                     series: [
-                        { name: 'Yaw残差', type: 'line', data: residualYawData, itemStyle: { color: '#2196F3' }, ...lineStyle },
-                        { name: 'Pitch残差', type: 'line', data: residualPitchData, itemStyle: { color: '#4CAF50' }, ...lineStyle },
-                        { name: '距离残差', type: 'line', data: residualDistanceData, itemStyle: { color: '#FF9800' }, ...lineStyle },
-                        { name: '角度残差', type: 'line', data: residualAngleData, itemStyle: { color: '#FF5722' }, ...lineStyle }
+                        { name: 'Yaw残差', type: 'line', data: residualYawData, itemStyle: { color: '#4285F4' }, ...lineStyle },
+                        { name: 'Pitch残差', type: 'line', data: residualPitchData, itemStyle: { color: '#34A853' }, ...lineStyle },
+                        { name: '距离残差', type: 'line', data: residualDistanceData, itemStyle: { color: '#FBBC05' }, ...lineStyle },
+                        { name: '角度残差', type: 'line', data: residualAngleData, itemStyle: { color: '#EA4335' }, ...lineStyle }
                     ]
                 });
                 
@@ -472,8 +691,8 @@
                     ...commonOption,
                     legend: { data: ['NIS', 'NEES'] },
                     series: [
-                        { name: 'NIS', type: 'line', data: nisData, itemStyle: { color: '#9C27B0' }, ...lineStyle },
-                        { name: 'NEES', type: 'line', data: neesData, itemStyle: { color: '#E91E63' }, ...lineStyle }
+                        { name: 'NIS', type: 'line', data: nisData, itemStyle: { color: '#4285F4' }, ...lineStyle },
+                        { name: 'NEES', type: 'line', data: neesData, itemStyle: { color: '#34A853' }, ...lineStyle }
                     ]
                 });
                 
@@ -481,7 +700,7 @@
                     ...commonOption,
                     legend: { data: ['帧延迟'] },
                     series: [
-                        { name: '帧延迟', type: 'line', data: frameDelayData, itemStyle: { color: '#00BCD4' }, ...lineStyle }
+                        { name: '帧延迟', type: 'line', data: frameDelayData, itemStyle: { color: '#EA4335' }, ...lineStyle }
                     ]
                 });
                 

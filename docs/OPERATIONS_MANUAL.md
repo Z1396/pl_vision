@@ -1,4 +1,4 @@
-# SP Vision 操作手册
+# pl_vision网页调试器 操作手册
 
 ## 目录
 
@@ -14,9 +14,9 @@
 
 ## 项目概述
 
-SP Vision是一个基于计算机视觉的自动瞄准系统，提供实时波形可视化功能，用于调试和分析系统性能。
+pl_vision网页调试器是一个基于计算机视觉的自动瞄准系统，提供实时波形可视化功能，用于调试和分析系统性能。
 
-**项目路径：** `/home/pldx/Desktop/sp_vision_25-main`
+**项目路径：** `/home/pldx/Desktop/pl_vision`
 
 **主要功能：**
 - 实时视频流显示
@@ -68,7 +68,7 @@ sudo apt-get install net-tools lsof
 
 ```bash
 # 进入项目目录
-cd /home/pldx/Desktop/sp_vision_25-main
+cd /home/pldx/Desktop/pl_vision
 
 # 创建构建目录
 mkdir -p build
@@ -93,7 +93,7 @@ make -j$(nproc)
 
 ```bash
 # 进入web目录
-cd /home/pldx/Desktop/sp_vision_25-main/web
+cd /home/pldx/Desktop/pl_vision/web
 
 # 启动HTTP服务器（端口8000）
 python3 -m http.server 8000
@@ -107,7 +107,7 @@ python3 -m http.server 8000
 
 ```bash
 # 进入项目目录
-cd /home/pldx/Desktop/sp_vision_25-main
+cd /home/pldx/Desktop/pl_vision
 
 # 运行auto_aim_test程序
 ./build/auto_aim_test assets/demo/3m
@@ -223,13 +223,13 @@ ps aux | grep auto_aim_test
 
 #### 启动HTTP服务器
 ```bash
-cd /home/pldx/Desktop/sp_vision_25-main/web
+cd /home/pldx/Desktop/pl_vision/web
 python3 -m http.server 8000
 ```
 
 #### 启动auto_aim_test
 ```bash
-cd /home/pldx/Desktop/sp_vision_25-main
+cd /home/pldx/Desktop/pl_vision
 ./build/auto_aim_test assets/demo/3m
 ```
 
@@ -284,7 +284,7 @@ auto_aim_test的输出直接显示在终端窗口。
 
 #### 重新编译
 ```bash
-cd /home/pldx/Desktop/sp_vision_25-main/build
+cd /home/pldx/Desktop/pl_vision/build
 make -j$(nproc)
 ```
 
@@ -295,14 +295,14 @@ make -j$(nproc)
 
 #### 备份视频文件
 ```bash
-cd /home/pldx/Desktop/sp_vision_25-main/assets/demo
+cd /home/pldx/Desktop/pl_vision/assets/demo
 cp 3m.avi 3m.avi.backup
 cp 3m.txt 3m.txt.backup
 ```
 
 #### 备份配置文件
 ```bash
-cd /home/pldx/Desktop/sp_vision_25-main
+cd /home/pldx/Desktop/pl_vision
 tar -czf backup_$(date +%Y%m%d).tar.gz web/ assets/demo/
 ```
 
@@ -322,7 +322,7 @@ tar -czf backup_$(date +%Y%m%d).tar.gz web/ assets/demo/
 lsof -i :8000
 
 # 如果没有运行，启动HTTP服务器
-cd /home/pldx/Desktop/sp_vision_25-main/web
+cd /home/pldx/Desktop/pl_vision/web
 python3 -m http.server 8000
 ```
 
@@ -338,7 +338,7 @@ python3 -m http.server 8000
 lsof -i :8080
 
 # 如果没有运行，启动auto_aim_test
-cd /home/pldx/Desktop/sp_vision_25-main
+cd /home/pldx/Desktop/pl_vision
 ./build/auto_aim_test assets/demo/3m
 ```
 
@@ -357,8 +357,8 @@ cd /home/pldx/Desktop/sp_vision_25-main
 # 在浏览器控制台查看是否有错误
 
 # 2. 检查视频文件是否存在
-ls -l /home/pldx/Desktop/sp_vision_25-main/assets/demo/3m.avi
-ls -l /home/pldx/Desktop/sp_vision_25-main/assets/demo/3m.txt
+ls -l /home/pldx/Desktop/pl_vision/assets/demo/3m.avi
+ls -l /home/pldx/Desktop/pl_vision/assets/demo/3m.txt
 
 # 3. 确保程序不在mock模式下运行
 ./build/auto_aim_test assets/demo/3m
@@ -377,7 +377,7 @@ ls -l /home/pldx/Desktop/sp_vision_25-main/assets/demo/3m.txt
 **解决方案：**
 ```bash
 # 1. 检查ECharts文件是否存在
-ls -l /home/pldx/Desktop/sp_vision_25-main/web/echarts.min.js
+ls -l /home/pldx/Desktop/pl_vision/web/echarts.min.js
 
 # 2. 在浏览器控制台查看错误信息
 # 按F12打开开发者工具，查看Console标签
@@ -416,7 +416,7 @@ kill -9 <PID>
 **解决方案：**
 ```bash
 # 1. 检查视频文件
-ffprobe /home/pldx/Desktop/sp_vision_25-main/assets/demo/3m.avi
+ffprobe /home/pldx/Desktop/pl_vision/assets/demo/3m.avi
 
 # 2. 使用gdb调试
 gdb ./build/auto_aim_test
@@ -598,7 +598,7 @@ valgrind --leak-check=full ./build/auto_aim_test assets/demo/3m
 ### B. 文件结构
 
 ```
-sp_vision_25-main/
+pl_vision/
 ├── assets/
 │   └── demo/
 │       ├── 3m.avi          # 视频文件
@@ -621,8 +621,8 @@ sp_vision_25-main/
 
 ```bash
 # 启动服务
-cd /home/pldx/Desktop/sp_vision_25-main/web && python3 -m http.server 8000
-cd /home/pldx/Desktop/sp_vision_25-main && ./build/auto_aim_test assets/demo/3m
+cd /home/pldx/Desktop/pl_vision/web && python3 -m http.server 8000
+cd /home/pldx/Desktop/pl_vision && ./build/auto_aim_test assets/demo/3m
 
 # 检查端口
 lsof -i :8000
@@ -636,7 +636,7 @@ ps aux | grep "python3 -m http.server"
 kill -9 <PID>
 
 # 编译项目
-cd /home/pldx/Desktop/sp_vision_25-main/build
+cd /home/pldx/Desktop/pl_vision/build
 cmake ..
 make -j$(nproc)
 ```
