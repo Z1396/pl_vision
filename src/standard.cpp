@@ -50,7 +50,7 @@ int main(int argc, char * argv[])
   /* 2. 初始化核心工具类 */
   tools::Exiter exiter;       // 退出控制器：监听Ctrl+C信号，设置exit()标志
   tools::Plotter plotter;     // 绘图器：实时在图像上绘制目标框、跟踪ID、瞄准线等
-  //tools::Recorder recorder;   // 数据录制器：录制图像、IMU姿态、时间戳，用于赛后复盘
+  tools::Recorder recorder;   // 数据录制器：录制图像、IMU姿态、时间戳，用于赛后复盘
   //tools::WebSocketServer ws_server(8080);  // WebSocket服务器：用于网页端可视化（端口8080）
   //ws_server.start();          // 启动WebSocket服务器
   //auto_aim::Target target;    // 目标信息存储：存储当前目标的状态、位置等信息
@@ -133,7 +133,7 @@ int main(int argc, char * argv[])
     }
 
     //（注释：数据录制功能，按需启用）
-    //recorder.record(img, q, t);  // 录制当前帧图像、IMU姿态、时间戳到文件
+    recorder.record(img, q, t);  // 录制当前帧图像、IMU姿态、时间戳到文件
 
     // 6.5 坐标解算：设置云台到世界坐标系的旋转矩阵（由IMU四元数转换）
     solver.set_R_gimbal2world(q);  

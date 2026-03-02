@@ -84,7 +84,7 @@ public:
     }
 
     SocketCAN(const std::string & interface, CANFdRxHandler rx_handler,
-            bool enable_canfd = true)
+            bool enable_canfd = false)
     : interface_(interface),        // 初始化CAN接口名称
         socket_fd_(-1),               // 初始化CAN套接字文件描述符为-1（-1表示未打开/无效）
         epoll_fd_(-1),                // 初始化epoll实例描述符为-1（-1表示未初始化）

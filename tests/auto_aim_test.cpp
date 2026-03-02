@@ -22,8 +22,8 @@ const std::string keys =
   "{help h usage ? |                   | 输出命令行参数说明 }"
   "{config-path c  | configs/standard3.yaml | yaml配置文件的路径}"
   "{start-index s  | 0                | 视频起始帧下标    }"
-  "{end-index e    | 280               | 视频结束帧下标    }"
-  "{@input-path    | assets/demo/3m | avi和txt文件的路径}"
+  "{end-index e    | 28000               | 视频结束帧下标    }"
+  "{@input-path    | assets/demo/2026-03-02_14-43-25 | avi和txt文件的路径}"
   "{enable-gui g   | false             | 是否启用GUI显示    }"
   "{mock-mode m    | false             | 是否启用模拟设备模式}";
 

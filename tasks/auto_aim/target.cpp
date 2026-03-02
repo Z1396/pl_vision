@@ -487,24 +487,7 @@ Eigen::Vector3d Target::h_armor_xyz(const Eigen::VectorXd & x, int id) const
     
     // 核心修改：前哨站根据装甲板ID应用高度差
     double armor_z = x[4];
-    if (name == ArmorName::outpost && x[7] > 0) 
-    {
-        switch(id) {
-            case 0:  // 基准装甲板
-                armor_z = x[4];
-                break;
-            case 1:  // 01号装甲板（加第一个高度差）
-                armor_z = x[4] - x[9];
-                break;
-            case 2:  // 02号装甲板（加第二个高度差）
-                armor_z = x[4] - x[10];
-                break;
-            default:
-                armor_z = x[4];
-                break;
-        }
-    }    
-    else if (name == ArmorName::outpost && x[7] < 0) 
+    if (name == ArmorName::outpost && x[7] > 0.0) 
     {
         switch(id) {
             case 0:  // 基准装甲板
@@ -515,6 +498,23 @@ Eigen::Vector3d Target::h_armor_xyz(const Eigen::VectorXd & x, int id) const
                 break;
             case 2:  // 02号装甲板（加第二个高度差）
                 armor_z = x[4] + x[10];
+                break;
+            default:
+                armor_z = x[4];
+                break;
+        }
+    }    
+    else if (name == ArmorName::outpost && x[7] < 0.0) 
+    {
+        switch(id) {
+            case 0:  // 基准装甲板
+                armor_z = x[4];
+                break;
+            case 1:  // 01号装甲板（加第一个高度差）
+                armor_z = x[4] - x[9];
+                break;
+            case 2:  // 02号装甲板（加第二个高度差）
+                armor_z = x[4] - x[10];
                 break;
             default:
                 armor_z = x[4];
