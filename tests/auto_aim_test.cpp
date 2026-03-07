@@ -15,17 +15,14 @@
 #include "tools/math_tools.hpp"
 #include "tools/plotter.hpp"        // 数据可视化工具
 #include "tools/websocket_server.hpp" // WebSocket服务器：用于网页端可视化
-#include "io/mock_camera.hpp"        // 虚拟相机模拟
-#include "io/mock_cboard.hpp"        // 虚拟CAN板模拟
 
 const std::string keys =
   "{help h usage ? |                   | 输出命令行参数说明 }"
   "{config-path c  | configs/standard3.yaml | yaml配置文件的路径}"
-  "{start-index s  | 0                | 视频起始帧下标    }"
+  "{start-index s  | 200                | 视频起始帧下标    }"
   "{end-index e    | 28000               | 视频结束帧下标    }"
-  "{@input-path    | assets/demo/2026-03-02_14-43-25 | avi和txt文件的路径}"
-  "{enable-gui g   | false             | 是否启用GUI显示    }"
-  "{mock-mode m    | false             | 是否启用模拟设备模式}";
+  "{@input-path    | assets/demo/2026-03-04_21-48-43 | avi和txt文件的路径}"
+  "{enable-gui g   | false             | 是否启用GUI显示    }";
 
 int main(int argc, char * argv[])
 {
@@ -41,8 +38,7 @@ int main(int argc, char * argv[])
   auto config_path = cli.get<std::string>("config-path");
   auto start_index = cli.get<int>("start-index");
   auto end_index = cli.get<int>("end-index");
-  auto enable_gui = cli.get<bool>("enable-gui");  
-  auto mock_mode = cli.get<bool>("mock-mode");  // 新增：模拟模式标志
+  auto enable_gui = cli.get<bool>("enable-gui");
 
   tools::Plotter plotter;       // 初始化绘图工具，用于记录算法数据（如目标位置、指令）
   tools::Exiter exiter;         // 初始化退出检测器，监听程序终止信号（如Ctrl+C）
@@ -66,46 +62,32 @@ int main(int argc, char * argv[])
   double frame_delay_ms = 0.0;  // 每帧总耗时（毫秒）
   double fps = 0.0;             // 实时帧率
 
-  // =========================== 新增：模拟设备初始化 ===========================
-  io::MockCamera* mock_camera = nullptr;
-  io::MockCBoard* mock_cboard = nullptr;
   cv::VideoCapture video;
   std::ifstream text;
+
+  tools::logger()->info("=== 启用离线视频模式 ===");
+  auto video_path = fmt::format("{}.avi", input_path);
+  auto text_path = fmt::format("{}.txt", input_path);
+  video.open(video_path);
+  text.open(text_path);
   
-  if (mock_mode) {
-    tools::logger()->info("=== 启用模拟设备模式 ===");
-    mock_camera = new io::MockCamera(config_path);
-    mock_cboard = new io::MockCBoard(config_path);
-    tools::logger()->info("模拟设备初始化完成");
-  } else {
-    tools::logger()->info("=== 启用离线视频模式 ===");
-    // 拼接视频和数据文件路径
-    auto video_path = fmt::format("{}.avi", input_path);  // 离线视频路径（.avi）
-    auto text_path = fmt::format("{}.txt", input_path);   // 离线数据路径（.txt，含IMU等信息）
-    video.open(video_path);  // 打开视频文件
-    text.open(text_path);       // 打开数据文件
-    
-    if (!video.isOpened()) {
-      tools::logger()->error("无法打开视频文件: {}", video_path);
-      return -1;
-    }
-    if (!text.is_open()) {
-      tools::logger()->error("无法打开数据文件: {}", text_path);
-      return -1;
-    }
-    
-    // 定位视频到起始帧
-    video.set(cv::CAP_PROP_POS_FRAMES, start_index);
-    // 跳过数据文件中起始帧之前的内容
-    for (int i = 0; i < start_index; i++) 
-    {
-      double t, w, x, y, z;
-      text >> t >> w >> x >> y >> z;  // 读取但不处理，仅移动文件指针
-    }
-    
-    tools::logger()->info("离线视频模式初始化完成");
+  if (!video.isOpened()) {
+    tools::logger()->error("无法打开视频文件: {}", video_path);
+    return -1;
   }
-  // =======================================================================
+  if (!text.is_open()) {
+    tools::logger()->error("无法打开数据文件: {}", text_path);
+    return -1;
+  }
+  
+  video.set(cv::CAP_PROP_POS_FRAMES, start_index);
+  for (int i = 0; i < start_index; i++) 
+  {
+    double t, w, x, y, z;
+    text >> t >> w >> x >> y >> z;
+  }
+  
+  tools::logger()->info("离线视频模式初始化完成");
 
   // 循环处理每一帧，直到退出信号或视频结束
   for (int frame_count = start_index; !exiter.exit(); frame_count++) 
@@ -113,29 +95,18 @@ int main(int argc, char * argv[])
     // -------------------------- 记录当前帧开始时间 --------------------------
     auto current_frame_start = std::chrono::steady_clock::now();
 
-    if (end_index > 0 && frame_count > end_index) break;  // 到达结束帧则退出
+    if (end_index > 0 && frame_count > end_index) break;
 
-    // =========================== 新增：根据模式读取数据 ===========================
     std::chrono::steady_clock::time_point timestamp;
     Eigen::Quaterniond q;
-    
-    if (mock_mode) {
-      // 模拟模式：从虚拟设备读取
-      mock_camera->read(img, timestamp);
-      q = mock_cboard->imu_at(timestamp);
-    } else {
-      // 离线视频模式：从文件读取
-      video.read(img);  // 从视频中读取一帧图像
-      if (img.empty()) break;  // 视频读取完毕则退出
 
-      // 从数据文件中读取当前帧的时间和IMU姿态（w,x,y,z为四元数）
-      double t, w, x, y, z;
-      text >> t >> w >> x >> y >> z;
-      // 生成模拟的绝对时间戳（基准时间+t）
-      timestamp = t0 + std::chrono::microseconds(int(t * 1e6));
-      q = Eigen::Quaterniond(w, x, y, z);
-    }
-    // =======================================================================
+    video.read(img);
+    if (img.empty()) break;
+
+    double t, w, x, y, z;
+    text >> t >> w >> x >> y >> z;
+    timestamp = t0 + std::chrono::microseconds(int(t * 1e6));
+    q = Eigen::Quaterniond(w, x, y, z);
 
     /// 自瞄核心逻辑
     // 设置解算器的云台到世界坐标系的旋转矩阵（从IMU四元数转换）
@@ -151,7 +122,7 @@ int main(int argc, char * argv[])
 
     // 3. 计算瞄准指令（根据目标预测位置和弹道）
     auto aimer_start = std::chrono::steady_clock::now();  // 记录瞄准开始时间
-    double bullet_speed = mock_mode ? mock_cboard->bullet_speed : 27.0;  // 根据模式获取弹速
+    double bullet_speed = 27.0;
     auto command = aimer.aim(targets, timestamp, bullet_speed, false);  // 输入目标、时间戳、弹速，输出指令
 
     // 判断是否满足发射条件（目标存在+瞄准稳定）
@@ -300,7 +271,8 @@ int main(int argc, char * argv[])
       data["nis_fail"] = target.ekf().data.at("nis_fail");  // NIS检验失败次数
       data["nees_fail"] = target.ekf().data.at("nees_fail");  // NEES检验失败次数
       data["recent_nis_failures"] = target.ekf().data.at("recent_nis_failures");  // 近期NIS失败次数
-    } else {
+    } else 
+    {
       // 没有检测到目标时，发送默认值
       data["x"] = 0.0;
       data["vx"] = 0.0;
@@ -349,14 +321,6 @@ int main(int argc, char * argv[])
     ws_server.broadcastData(data);
     // ==================================================================== 
   }
-
-  // =========================== 新增：清理模拟设备资源 ===========================
-  if (mock_mode) {
-    delete mock_camera;
-    delete mock_cboard;
-    tools::logger()->info("模拟设备资源已释放");
-  }
-  // =======================================================================
-
   return 0;
+
 }

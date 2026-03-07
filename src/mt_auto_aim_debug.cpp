@@ -22,7 +22,7 @@
 
 const std::string keys =
   "{help h usage ? |                        | 输出命令行参数说明}"
-  "{@config-path   | /home/pldx/Desktop/sp_vision_25-main/configs/standard3.yaml | 位置参数，yaml配置文件路径 }";
+  "{@config-path   | configs/standard3.yaml | 位置参数，yaml配置文件路径 }";
 
 using namespace std::chrono;
 

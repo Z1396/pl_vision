@@ -48,7 +48,7 @@ std::list<Target> Tracker::track(
     last_timestamp_ = t;  // 更新上一帧时间戳为当前时间
 
     // 若时间间隔超过0.1秒且当前状态不是"丢失"，则判定为相机可能离线，将状态设为"丢失"
-    if ((state_ != "lost" && dt > 1.0)) 
+    if ((state_ != "lost" && dt > 0.1)) 
     {
         tools::logger()->warn("[Tracker] Large dt: {:.3f}s", dt);  // 记录警告日志
         state_ = "lost";

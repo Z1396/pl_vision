@@ -8,3 +8,4 @@ imgs/
 patterns/
 assets/demo/
 assets/img_with_q/
+.cache/

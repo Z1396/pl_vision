@@ -408,7 +408,7 @@
     </div>
 
     <script>
-        const WS_URL = 'ws://192.168.43.247:8080';
+        const WS_URL = 'ws://localhost:8080';
         let ws;
         let MAX_DATA_POINTS = 200;
         let autoScroll = true;
@@ -951,10 +951,14 @@
                         const message = JSON.parse(event.data);
                         
                         if (message.type === 'video') {
-                            const img = document.getElementById('videoFeed');
-                            img.src = 'data:image/jpeg;base64,' + message.data;
+                            requestAnimationFrame(() => {
+                                const img = document.getElementById('videoFeed');
+                                img.src = 'data:image/jpeg;base64,' + message.data;
+                            });
                         } else if (message.type === 'data') {
-                            updateCharts(message.data);
+                            requestAnimationFrame(() => {
+                                updateCharts(message.data);
+                            });
                         }
                     } catch (error) {
                         console.error('解析消息失败:', error);

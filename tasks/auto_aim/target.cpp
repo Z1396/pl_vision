@@ -46,7 +46,7 @@ Target::Target(
   // 最后两个0: 预留维度（可用于长度、高度等）
   if(armor.name == ArmorName::outpost)
   {
-    Eigen::VectorXd x0{{center_x, 0, center_y, 0, center_z, 0, ypr[0], 0, r, 0.15, 0.3}};
+    Eigen::VectorXd x0{{center_x, 0, center_y, 0, center_z, 0, ypr[0], 0, r, 0.15, 0.15}};
       // 初始化状态协方差矩阵P0（对角矩阵）
     // 对角元素由参数P0_dig提供，代表各状态量的初始不确定性
     Eigen::MatrixXd P0 = P0_dig.asDiagonal();  //P0_dig.asDiagonal()：这是 Eigen 库提供的一个方法，用于将向量转换为对角矩阵
@@ -199,7 +199,7 @@ void Target::predict(double dt)
 
     // ========== 新增：Z轴物理约束（位置+速度限幅） ==========
     // 1. Z轴速度（vz，x[5]）限幅（与X轴速度约束对齐）
-    const double max_vz = 0.001;  // 单位：m/s，可根据实际场景调整
+    const double max_vz = 0.0;  // 单位：m/s，可根据实际场景调整
     ekf_.x[5] = std::clamp(ekf_.x[5], -max_vz, max_vz);
 }
 
@@ -487,7 +487,7 @@ Eigen::Vector3d Target::h_armor_xyz(const Eigen::VectorXd & x, int id) const
     
     // 核心修改：前哨站根据装甲板ID应用高度差
     double armor_z = x[4];
-    if (name == ArmorName::outpost && x[7] > 0.0) 
+    if (name == ArmorName::outpost ) 
     {
         switch(id) {
             case 0:  // 基准装甲板
@@ -504,23 +504,23 @@ Eigen::Vector3d Target::h_armor_xyz(const Eigen::VectorXd & x, int id) const
                 break;
         }
     }    
-    else if (name == ArmorName::outpost && x[7] < 0.0) 
-    {
-        switch(id) {
-            case 0:  // 基准装甲板
-                armor_z = x[4];
-                break;
-            case 1:  // 01号装甲板（加第一个高度差）
-                armor_z = x[4] - x[9];
-                break;
-            case 2:  // 02号装甲板（加第二个高度差）
-                armor_z = x[4] - x[10];
-                break;
-            default:
-                armor_z = x[4];
-                break;
-        }
-    }
+    // else if (name == ArmorName::outpost && x[7] < 0.0) 
+    // {
+    //     switch(id) {
+    //         case 0:  // 基准装甲板
+    //             armor_z = x[4];
+    //             break;
+    //         case 1:  // 01号装甲板（加第一个高度差）
+    //             armor_z = x[4] - x[9];
+    //             break;
+    //         case 2:  // 02号装甲板（加第二个高度差）
+    //             armor_z = x[4] - x[10];
+    //             break;
+    //         default:
+    //             armor_z = x[4];
+    //             break;
+    //     }
+    // }
      else 
     {
         // 非前哨站保持原有逻辑
