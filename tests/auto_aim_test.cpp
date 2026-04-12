@@ -21,7 +21,7 @@ const std::string keys =
   "{config-path c  | configs/standard3.yaml | yaml配置文件的路径}"
   "{start-index s  | 200                | 视频起始帧下标    }"
   "{end-index e    | 28000               | 视频结束帧下标    }"
-  "{@input-path    | assets/demo/2026-03-04_21-48-43 | avi和txt文件的路径}"
+  "{@input-path    | assets/demo/2026-03-08_18-50-13 | avi和txt文件的路径}"
   "{enable-gui g   | false             | 是否启用GUI显示    }";
 
 int main(int argc, char * argv[])

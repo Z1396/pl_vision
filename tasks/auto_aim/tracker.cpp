@@ -337,8 +337,8 @@ bool Tracker::set_target(std::list<Armor> & armors, std::chrono::steady_clock::t
     // 其他类型装甲板（如普通步兵、英雄机器人等）
     else 
     {
-        Eigen::VectorXd P0_dig{{1, 64, 1, 64, 1, 64, 0.4, 100, 1, 1, 1}};  //这是一个包含 11 个元素的动态大小列向量
-        target_ = Target(armor, t, 0.2, 4, P0_dig);
+        Eigen::VectorXd P0_dig{{1, 64, 1, 64, 1, 64, 0.4, 100, 1e-4, 0, 0}};  //这是一个包含 11 个元素的动态大小列向量
+        target_ = Target(armor, t, 0.24, 4, P0_dig);
     }
 
     // 目标设置成功

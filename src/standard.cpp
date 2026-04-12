@@ -88,29 +88,29 @@ int main(int argc, char * argv[])
   while (!exiter.exit()) 
   {
     // ====================== 新增：计算FPS（放在循环开头，确保覆盖完整循环逻辑） ======================
-    auto current_frame_time = std::chrono::steady_clock::now();  // 当前帧时间戳
-    // 计算当前帧与上一帧的时间间隔（单位：秒）
-    double frame_interval = tools::delta_time(current_frame_time, last_frame_time);
-    // 更新上一帧时间戳（为下一帧做准备）
-    last_frame_time = current_frame_time;
+    // auto current_frame_time = std::chrono::steady_clock::now();  // 当前帧时间戳
+    // // 计算当前帧与上一帧的时间间隔（单位：秒）
+    // double frame_interval = tools::delta_time(current_frame_time, last_frame_time);
+    // // 更新上一帧时间戳（为下一帧做准备）
+    // last_frame_time = current_frame_time;
 
-    // 平滑FPS计算（避免单帧波动导致FPS跳变）
-    frame_intervals.push_back(frame_interval);
-    if (frame_intervals.size() > FPS_SMOOTH_WINDOW) {
-      frame_intervals.erase(frame_intervals.begin());  // 移除最早的帧间隔
-    }
-    // 计算平均帧间隔，再求倒数得到平滑后的FPS
-    double avg_interval = 0.0;
-    for (double interval : frame_intervals) 
-    {
-      avg_interval += interval;
-    }
-    avg_interval /= frame_intervals.size();
-    if (avg_interval > 1e-6) {  // 防止除以0（极端情况下帧间隔为0）
-      fps = 1.0 / avg_interval; 
-    } else {
-      fps = 0.0;
-    }
+    // // 平滑FPS计算（避免单帧波动导致FPS跳变）
+    // frame_intervals.push_back(frame_interval);
+    // if (frame_intervals.size() > FPS_SMOOTH_WINDOW) {
+    //   frame_intervals.erase(frame_intervals.begin());  // 移除最早的帧间隔
+    // }
+    // // 计算平均帧间隔，再求倒数得到平滑后的FPS
+    // double avg_interval = 0.0;
+    // for (double interval : frame_intervals) 
+    // {
+    //   avg_interval += interval;
+    // }
+    // avg_interval /= frame_intervals.size();
+    // if (avg_interval > 1e-6) {  // 防止除以0（极端情况下帧间隔为0）
+    //   fps = 1.0 / avg_interval; 
+    // } else {
+    //   fps = 0.0;
+    // }
     // ==================================================================
 
     // 6.1 采集相机图像与时间戳：camera.read()会阻塞直到获取新图像
@@ -126,14 +126,14 @@ int main(int argc, char * argv[])
     mode = cboard.mode;
 
     //6.4 检测系统模式切换：若模式变化，打印日志
-    if (last_mode != mode) 
-    {
-      tools::logger()->info("Switch to {}", io::MODES[mode]);  // 输出模式切换信息（如"Switch to auto_aim"）
-      last_mode = mode;  // 更新上一帧模式
-    }
+    // if (last_mode != mode) 
+    // {
+    //   tools::logger()->info("Switch to {}", io::MODES[mode]);  // 输出模式切换信息（如"Switch to auto_aim"）
+    //   last_mode = mode;  // 更新上一帧模式
+    // }
 
     //（注释：数据录制功能，按需启用）
-    recorder.record(img, q, t);  // 录制当前帧图像、IMU姿态、时间戳到文件
+    //recorder.record(img, q, t);  // 录制当前帧图像、IMU姿态、时间戳到文件
 
     // 6.5 坐标解算：设置云台到世界坐标系的旋转矩阵（由IMU四元数转换）
     solver.set_R_gimbal2world(q);  
@@ -141,13 +141,11 @@ int main(int argc, char * argv[])
     // （注释：调试用：将旋转矩阵转换为欧拉角（yaw偏航、pitch俯仰、roll滚转），按需启用）
     Eigen::Vector3d ypr = tools::eulers(solver.R_gimbal2world(), 2, 1, 0);  // 2,1,0表示yaw-pitch-roll顺序
 
-    tools::logger()->info("z{:.2f} y{:.2f} x{:.2f} degree | FPS: {:.1f}", 
-                    ypr[0] * 57.3, ypr[1] * 57.3, ypr[2] * 57.3, 
-                    fps);  // 新增：打印FPS（保留1位小数）
+
 
     // 6.6 目标检测：用YOLO检测器检测图像中的装甲板，返回装甲板列表（含位置、尺寸、置信度等）
      auto armors = detector.detect(img);  
-
+    
     // // 6.7 目标跟踪：对检测到的装甲板进行多目标跟踪，输出稳定的目标列表（过滤瞬时误检、匹配同一目标）
     auto targets = tracker.track(armors, t);  
     
@@ -157,7 +155,7 @@ int main(int argc, char * argv[])
     command.shoot = shooter.shoot(command, aimer, targets, ypr);
 
     //6.9 发送控制指令：将瞄准器计算的指令通过CBoard发送给云台执行机构（如电机）
-     cboard.send(command);  
+     cboard.send(command);    
 
     tools::logger()->info("Control: {}, Shoot: {}, Yaw: {:.2f}, Pitch: {:.2f} | FPS: {:.1f}",
                     command.control, 
@@ -166,105 +164,106 @@ int main(int argc, char * argv[])
                     command.pitch * 57.3,
                     fps);  // 新增：打印控制指令时附带FPS
 
-    /// debug
-    tools::draw_text(img, fmt::format("[{}] | FPS: {:.1f}", tracker.state(), fps), {100, 30}, {255, 255, 255});  // 新增：在图像上显示FPS
+    // /// debug
+     //tools::draw_text(img, fmt::format("[{}] | FPS: {:.1f}", tracker.state(), fps), {100, 30}, {255, 255, 255});  // 新增：在图像上显示FPS
    
 
-    nlohmann::json data;
-    data["t"] = tools::delta_time(std::chrono::steady_clock::now(), t0);
-    data["fps"] = fps;  // 新增：将FPS存入data，方便后续分析/录制
+    // nlohmann::json data;
+    // data["t"] = tools::delta_time(std::chrono::steady_clock::now(), t0);
+    // data["fps"] = fps;  // 新增：将FPS存入data，方便后续分析/录制
 
-    // 装甲板原始观测数据
-    data["armor_num"] = armors.size();
-    if (!armors.empty()) 
-    {
-      auto min_x = 1e10;
-      auto & armor = armors.front();
-      for (auto & a : armors) 
-      {
-        if (a.center.x < min_x) 
-        {
-          min_x = a.center.x;
-          armor = a;
-        }
-      }  //always left
-      solver.solve(armor);
-      data["distance"] = armor.ypd_in_world[2];
-      data["armor_x"] = armor.xyz_in_world[0]*100;
-      data["armor_y"] = armor.xyz_in_world[1];
-      data["armor_z"] = armor.xyz_in_world[2] * 100;
-      data["armor_yaw"] = armor.ypr_in_world[0] * 57.3;
-      data["armor_yaw_raw"] = armor.yaw_raw * 57.3;
-    }
+    // // 装甲板原始观测数据
+    // data["armor_num"]
+    // = armors.size();
+    // if (!armors.empty()) 
+    // {
+    //   auto min_x = 1e10;
+    //   auto & armor = armors.front();
+    //   for (auto & a : armors) 
+    //   {
+    //     if (a.center.x < min_x) 
+    //     {
+    //       min_x = a.center.x;
+    //       armor = a;
+    //     }
+    //   }  //always left
+    //   solver.solve(armor);
+    //   data["distance"] = armor.ypd_in_world[2];
+    //   data["armor_x"] = armor.xyz_in_world[0]*100;
+    //   data["armor_y"] = armor.xyz_in_world[1];
+    //   data["armor_z"] = armor.xyz_in_world[2] * 100;
+    //   data["armor_yaw"] = armor.ypr_in_world[0] * 57.3;
+    //   data["armor_yaw_raw"] = armor.yaw_raw * 57.3;
+    // }
 
-    if (!targets.empty()) 
-    {
-      auto target = targets.front();
-      tools::draw_text(img, fmt::format("[{}] ", target.outpost_state()), {10, 30}, {255, 255, 255}); 
+    // if (!targets.empty()) 
+    // {
+    //   auto target = targets.front();
+    //   tools::draw_text(img, fmt::format("[{}] ", target.outpost_state()), {10, 30}, {255, 255, 255}); 
 
-      // 当前帧target更新后
-      std::vector<Eigen::Vector4d> armor_xyza_list = target.armor_xyza_list();
-      for (const Eigen::Vector4d & xyza : armor_xyza_list) 
-      {
-        auto image_points =
-          solver.reproject_armor(xyza.head(3), xyza[3], target.armor_type, target.name);
-        tools::draw_points(img, image_points, {0, 255, 0});
-      }
+    //   // 当前帧target更新后
+    //   std::vector<Eigen::Vector4d> armor_xyza_list = target.armor_xyza_list();
+    //   for (const Eigen::Vector4d & xyza : armor_xyza_list) 
+    //   {
+    //     auto image_points =
+    //       solver.reproject_armor(xyza.head(3), xyza[3], target.armor_type, target.name);
+    //     tools::draw_points(img, image_points, {0, 255, 0});
+    //   }
 
-      // aimer瞄准位置
-      auto aim_point = aimer.debug_aim_point;
-      Eigen::Vector4d aim_xyza = aim_point.xyza;
-      auto image_points =
-        solver.reproject_armor(aim_xyza.head(3), aim_xyza[3], target.armor_type, target.name);
-      if (aim_point.valid)
-        tools::draw_points(img, image_points, {0, 0, 255});//b,g,r
-      else
-        tools::draw_points(img, image_points, {255, 0, 0});
+    //   // aimer瞄准位置
+    //   auto aim_point = aimer.debug_aim_point;
+    //   Eigen::Vector4d aim_xyza = aim_point.xyza;
+    //   auto image_points =
+    //     solver.reproject_armor(aim_xyza.head(3), aim_xyza[3], target.armor_type, target.name);
+    //   if (aim_point.valid)
+    //     tools::draw_points(img, image_points, {0, 0, 255});//b,g,r
+    //   else
+    //     tools::draw_points(img, image_points, {255, 0, 0});
 
-      // 观测器内部数据
-      Eigen::VectorXd x = target.ekf_x();
-      data["x"] = x[0];
-      data["vx"] = x[1] * 10;
-      data["y"] = x[2];
-      data["vy"] = x[3];
-      data["z"] = x[4] * 10;
-      data["vz"] = x[5];
-      data["a"] = x[6] * 57.3;
-      data["w"] = x[7];
-      data["r"] = x[8];
-      data["l"] = x[9];
-      data["h"] = x[10];
-      data["last_id"] = target.last_id;
+    //   // 观测器内部数据
+    //   Eigen::VectorXd x = target.ekf_x();
+    //   data["x"] = x[0];
+    //   data["vx"] = x[1] * 10;
+    //   data["y"] = x[2];
+    //   data["vy"] = x[3];
+    //   data["z"] = x[4] * 10;
+    //   data["vz"] = x[5];
+    //   data["a"] = x[6] * 57.3;
+    //   data["w"] = x[7];
+    //   data["r"] = x[8];
+    //   data["l"] = x[9];
+    //   data["h"] = x[10];
+    //   data["last_id"] = target.last_id;
 
-      // 卡方检验数据
-      data["residual_yaw"] = target.ekf().data.at("residual_yaw");
-      data["residual_pitch"] = target.ekf().data.at("residual_pitch");
-      data["residual_distance"] = target.ekf().data.at("residual_distance");
-      data["residual_angle"] = target.ekf().data.at("residual_angle");
-      data["nis"] = target.ekf().data.at("nis");
-      data["nees"] = target.ekf().data.at("nees");
-      data["nis_fail"] = target.ekf().data.at("nis_fail");
-      data["nees_fail"] = target.ekf().data.at("nees_fail");
-      data["recent_nis_failures"] = target.ekf().data.at("recent_nis_failures");
-    }
+    //   // 卡方检验数据
+    //   data["residual_yaw"] = target.ekf().data.at("residual_yaw");
+    //   data["residual_pitch"] = target.ekf().data.at("residual_pitch");
+    //   data["residual_distance"] = target.ekf().data.at("residual_distance");
+    //   data["residual_angle"] = target.ekf().data.at("residual_angle");
+    //   data["nis"] = target.ekf().data.at("nis");
+    //   data["nees"] = target.ekf().data.at("nees");
+    //   data["nis_fail"] = target.ekf().data.at("nis_fail");
+    //   data["nees_fail"] = target.ekf().data.at("nees_fail");
+    //   data["recent_nis_failures"] = target.ekf().data.at("recent_nis_failures");
+    // }
 
-    // 云台响应情况
-    data["gimbal_yaw"] = ypr[0] * 57.3;
-    data["gimbal_pitch"] = ypr[1] * 57.3;
-    data["gimbal_roll"] = ypr[2] * 57.3;
-    data["bullet_speed"] = cboard.bullet_speed;
-    if (command.control) 
-    {
-      data["cmd_yaw"] = command.yaw * 57.3;
-      data["cmd_pitch"] = command.pitch * 57.3;
-      data["cmd_shoot"] = command.shoot;
-    }
-    plotter.plot(data);
+    // // 云台响应情况
+    //  data["gimbal_yaw"] = ypr[0] * 57.3;
+    //  data["gimbal_pitch"] = ypr[1] * 57.3;
+    //  data["gimbal_roll"] = ypr[2] * 57.3;
+    //  data["bullet_speed"] = cboard.bullet_speed;
+    //  if (command.control) 
+    //  {
+    //    data["cmd_yaw"] = command.yaw * 57.3;
+    //    data["cmd_pitch"] = command.pitch * 57.3;
+    //    data["cmd_shoot"] = command.shoot;
+    // }
+    //  plotter.plot(data);
 
-    cv::resize(img, img, {}, 0.5, 0.5);  // 显示时缩小图片尺寸
-    cv::imshow("reprojection", img);
-    auto key = cv::waitKey(1);
-    if (key == 'q') break;
+    // cv::resize(img, img, {}, 0.5, 0.5);  // 显示时缩小图片尺寸
+    // cv::imshow("reprojection", img);
+    // auto key = cv::waitKey(1);
+    // if (key == 'q') break;
     
     // ====================== 新增：WebSocket广播 ======================
     // std::vector<uchar> jpeg_buffer;

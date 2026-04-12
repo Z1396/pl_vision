@@ -57,11 +57,11 @@ outpost_max_temp_lost_count: 75
 
 #####-----瞄准器参数-----#####
 # 偏航角补偿（度）
-yaw_offset: 0.5 # degree -2.5 (减小往右偏)
+yaw_offset: 1.2 # degree -2.5 (减小往右偏)
 # 俯仰角补偿（度）
-pitch_offset: 7.0 # degree 2  （加大往上偏）
+pitch_offset: 4.3 # degree 2  （加大往上偏）
 # 进入角度（度）
-comming_angle: 60 # degree
+comming_angle: 55 # degree
 # 离开角度（度）
 leaving_angle: 20 # degree
 # 决策速度（弧度/秒）
@@ -69,13 +69,13 @@ decision_speed: 8 # rad/s
 # 高速延迟时间（秒）
 high_speed_delay_time: 0.2 # s
 # 低速延迟时间（秒），规划器使用此值
-low_speed_delay_time: 0.12 # s planner use this value
+low_speed_delay_time: 0.17 # s planner use this value
 
 #####-----射击器参数-----#####
 # 近距离射击容差（度）
 first_tolerance: 2 # 近距离射击容差，degree
 # 远距离射击容差（度）
-second_tolerance: 2 # 远距离射击容差，degree
+second_tolerance: 0.8 # 远距离射击容差，degree
 # 距离判断阈值
 judge_distance: 2 #距离判断阈值
 # 是否由自瞄系统控制射击
@@ -96,13 +96,6 @@ vid_pid: "2bdf:0001"  #VID（厂商 ID）和PID（产品 ID）
 #  0  1  0
 #  0  0  1
 R_gimbal2imubody: [1, 0, 0, 0, 1, 0, 0, 0, 1]
-
-
-# X轴：前后距离（向前53.866mm → 0.053866m）
-# Y轴：左右距离（机械未标注，默认无偏移）
-# Z轴：上下距离（向上32.739305mm → 0.032739305m）
-#云台到IMU本体的平移向量（单位：m，已将mm转为m）T_gimbal2imubody: [33.866, 0.0, 82.739305]
-T_gimbal2imubody: [0.0466, 0.0, 0.0339305]
 
 # 重投影误差: 0.6484px
 #camera_matrix: [2042.419469033613, 0, 699.97502715925907, 0, 2042.9697807341181, 508.56352056068022, 0, 0, 1]

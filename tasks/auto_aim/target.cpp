@@ -194,12 +194,14 @@ void Target::predict(double dt)
     if (this->convergened() && this->name == ArmorName::outpost && std::abs(this->ekf_.x[7]) > 2)
         this->ekf_.x[7] = this->ekf_.x[7] > 0 ? 2.51 : -2.51;
 
+    //this->ekf_.x[7] =  2.51;
+
     // 调用EKF的预测方法
     ekf_.predict(F, Q, f);
 
     // ========== 新增：Z轴物理约束（位置+速度限幅） ==========
     // 1. Z轴速度（vz，x[5]）限幅（与X轴速度约束对齐）
-    const double max_vz = 0.0;  // 单位：m/s，可根据实际场景调整
+    const double max_vz = 0.1;  // 单位：m/s，可根据实际场景调整
     ekf_.x[5] = std::clamp(ekf_.x[5], -max_vz, max_vz);
 }
 

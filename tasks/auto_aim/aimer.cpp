@@ -286,8 +286,8 @@ AimPoint Aimer::choose_aim_point(const Target & target)
     // 根据目标旋转方向（ekf_x[7]为旋转方向相关速度）选择合适的装甲板：
     // 1. 正向旋转时，选择角度差小于"离开"阈值的装甲板
     // 2. 反向旋转时，选择角度差大于-"离开"阈值的装甲板
-    if (ekf_x[7] > 0 && delta_angle_list[i] < leaving_angle) return {true, armor_xyza_list[i]};
-    if (ekf_x[7] < 0 && delta_angle_list[i] > -leaving_angle) return {true, armor_xyza_list[i]};
+    if (ekf_x[7] > 0 && delta_angle_list[i] < leaving_angle ) return {true, armor_xyza_list[i]};
+    if (ekf_x[7] < 0 && delta_angle_list[i] > -leaving_angle ) return {true, armor_xyza_list[i]};
   }
 
   // 如果没有符合条件的装甲板，返回默认值

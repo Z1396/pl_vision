@@ -558,8 +558,10 @@ void WebSocketServer::sha1(const unsigned char* data, size_t len, unsigned char*
  * 从消息队列中取出消息并广播到所有客户端。
  * 使用条件变量等待新消息，避免忙等待。
  */
-void WebSocketServer::broadcastLoop() {
-    while (running_) {
+void WebSocketServer::broadcastLoop() 
+{
+    while (running_) 
+    {
         std::string jpeg_data;
         std::string data_json;
         bool send_video = false;

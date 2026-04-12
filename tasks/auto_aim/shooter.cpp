@@ -55,8 +55,10 @@ bool Shooter::shoot(
   // 2. 放宽命令突变判断：原倍数是2倍，改为3倍（允许更大的命令波动）
   // 3. 放宽瞄准精度判断：原是1倍tolerance，改为1.5倍（允许更大的瞄准偏差）
   if (
-    std::abs(last_command_.yaw - command.yaw) < tolerance * 2.0 &&  // 原2倍 → 3倍
+    std::abs(last_command_.yaw - command.yaw) < tolerance *1.0 &&  // 原2倍 → 3倍
+    std::abs(last_command_.pitch - command.pitch) < tolerance * 1.0 &&  // 原2倍 → 3倍 
     std::abs(gimbal_pos[0] - last_command_.yaw) < tolerance * 1.0 &&  // 原1倍 → 1.5倍
+    std::abs(gimbal_pos[1] - last_command_.pitch) < tolerance * 1.0 &&  // 原1倍 → 1.5倍
     aimer.debug_aim_point.valid) {
     
     last_command_ = command;
